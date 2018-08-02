@@ -160,7 +160,7 @@ int main(int argc, char *argv[]) {
   }
   COUT << "The dimension of each data point: " << dim << std::endl;
 
-  std::string fileName = "/mnt/gmm_data.txt";
+  std::string fileName = "/home/ubuntu/code_search_data.txt";
   if (argc > 9) {
     fileName = argv[9];
   }
@@ -234,15 +234,15 @@ int main(int argc, char *argv[]) {
                << std::endl;
 
           pdbClient.sendData<DoubleVector>(
-                  std::pair<std::string, std::string>("gmm_input_set",
-                                                      "gmm_db"),
+                  std::pair<std::string, std::string>("code_search_input_set",
+                                                      "code_search_db"),
                   storeMe);
         } catch (pdb::NotEnoughSpace &n) {
           COUT << "Added " << storeMe->size() << " Total: " << addedData
                << std::endl;
           pdbClient.sendData<DoubleVector>(
-                  std::pair<std::string, std::string>("gmm_input_set",
-                                                      "gmm_db"),
+                  std::pair<std::string, std::string>("code_search_input_set",
+                                                      "code_search_db"),
                   storeMe);
         }
         COUT << blocksize << "MB data sent to dispatcher server~~" << std::endl;
@@ -252,7 +252,93 @@ int main(int argc, char *argv[]) {
       // to write back all buffered records
       pdbClient.flushData();
 
-    }
+    } else { // Load from file
+
+      numData = 0;
+      std::ifstream inFile(fileName.c_str());
+      std::string line;
+      bool rollback = false;
+      bool end = false;
+
+      numData = 0;
+      while (!end) {
+        pdb::makeObjectAllocatorBlock(blocksize * 1024 * 1024, true);
+        pdb::Handle<pdb::Vector<pdb::Handle<DoubleVector>>> storeMe =
+            pdb::makeObject<pdb::Vector<pdb::Handle<DoubleVector>>>();
+        try {
+
+          while (1) {
+            if (!rollback) {
+              //      std::istringstream iss(line);
+              if (!std::getline(inFile, line)) {
+                end = true;
+                break;
+              } else {
+                pdb::Handle<DoubleVector> myData =
+                    pdb::makeObject<DoubleVector>(dim);
+                std::stringstream lineStream(line);
+                double value;
+                int index = 0;
+                while (lineStream >> value) {
+                  myData->setDouble(index, value);
+                  COUT << value << endl;
+                  index++;
+                }
+                storeMe->push_back(myData);
+                // myData->print();
+              }
+            } else {
+              rollback = false;
+              pdb::Handle<DoubleVector> myData =
+                  pdb::makeObject<DoubleVector>(dim);
+              std::stringstream lineStream(line);
+              double value;
+              int index = 0;
+              while (lineStream >> value) {
+                //(*myData)[index] = value;
+                myData->setDouble(index, value);
+                COUT << value << endl;
+                index++;
+              }
+              storeMe->push_back(myData);
+            }
+          }
+
+          end = true;
+
+          // send the rest of data at the end, it can happen that the exception
+          // never
+          // happens.
+          pdbClient.sendData<DoubleVector>(
+                  std::pair<std::string, std::string>("code_search_input_set",
+                                                      "code_search_db"),
+                  storeMe);
+
+          numData += storeMe->size();
+          COUT << "Added " << storeMe->size() << " Total: " << numData
+               << std::endl;
+
+          pdbClient.flushData();
+        } catch (pdb::NotEnoughSpace &n) {
+          pdbClient.sendData<DoubleVector>(
+                  std::pair<std::string, std::string>("code_search_input_set",
+                                                      "code_search_db"),
+                  storeMe);
+
+          numData += storeMe->size();
+          COUT << "Added " << storeMe->size() << " Total: " << numData
+               << std::endl;
+
+          rollback = true;
+        }
+        PDB_COUT << blocksize << "MB data sent to dispatcher server~~"
+                 << std::endl;
+
+      } // while not end
+      inFile.close();
+    } // End load data!!
+
+
   } // End if - whetherToAddData = true
 
   auto end = std::chrono::high_resolution_clock::now();
