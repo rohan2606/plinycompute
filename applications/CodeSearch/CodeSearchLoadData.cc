@@ -28,7 +28,7 @@
 #include "Query.h"
 
 #include "DataTypes.h"
-#include "DoubleVector.h"
+#include "SearchProgramData.h"
 #include "Set.h"
 
 #include <chrono>
@@ -145,7 +145,7 @@ int main(int argc, char *argv[]) {
 
   int iter = 1;
   int k = 2;
-  int dim = 2;
+  int dim = 4;
   int numData = 10;
   double convergenceTol = 0.001; // Convergence threshold
 
@@ -177,6 +177,7 @@ int main(int argc, char *argv[]) {
 
   PDBClient pdbClient(8108, managerIp);
 
+  pdbClient.registerType("libraries/libSearchProgramData.so");
   string errMsg;
 
   //    srand(time(0));
@@ -195,10 +196,10 @@ int main(int argc, char *argv[]) {
 
   if (whetherToAddData == true) {
     // now, create a new database
-    pdbClient.createDatabase("code_search_db");
+    pdbClient.createDatabase("code_search_db7");
 
     // now, create a new set in that database
-    pdbClient.createSet<DoubleVector>("code_search_db", "code_search_input_set");
+    pdbClient.createSet<SearchProgramData>("code_search_db7", "code_search_input_set");
   }
 
   // Step 2. Add data
@@ -213,13 +214,13 @@ int main(int argc, char *argv[]) {
 
         pdb::makeObjectAllocatorBlock(blocksize * 1024 * 1024, true);
 
-        pdb::Handle<pdb::Vector<pdb::Handle<DoubleVector>>> storeMe =
-            pdb::makeObject<pdb::Vector<pdb::Handle<DoubleVector>>>();
+        pdb::Handle<pdb::Vector<pdb::Handle<SearchProgramData>>> storeMe =
+            pdb::makeObject<pdb::Vector<pdb::Handle<SearchProgramData>>>();
         try {
           double bias = 0;
           for (int i = addedData; i < numData; i++) {
-            pdb::Handle<DoubleVector> myData =
-                pdb::makeObject<DoubleVector>(dim);
+            pdb::Handle<SearchProgramData> myData =
+                pdb::makeObject<SearchProgramData>(dim);
             for (int j = 0; j < dim; j++) {
 
               std::uniform_real_distribution<> unif(0, 1);
@@ -233,16 +234,16 @@ int main(int argc, char *argv[]) {
           COUT << "Added " << storeMe->size() << " Total: " << addedData
                << std::endl;
 
-          pdbClient.sendData<DoubleVector>(
+          pdbClient.sendData<SearchProgramData>(
                   std::pair<std::string, std::string>("code_search_input_set",
-                                                      "code_search_db"),
+                                                      "code_search_db7"),
                   storeMe);
         } catch (pdb::NotEnoughSpace &n) {
           COUT << "Added " << storeMe->size() << " Total: " << addedData
                << std::endl;
-          pdbClient.sendData<DoubleVector>(
+          pdbClient.sendData<SearchProgramData>(
                   std::pair<std::string, std::string>("code_search_input_set",
-                                                      "code_search_db"),
+                                                      "code_search_db7"),
                   storeMe);
         }
         COUT << blocksize << "MB data sent to dispatcher server~~" << std::endl;
@@ -263,8 +264,8 @@ int main(int argc, char *argv[]) {
       numData = 0;
       while (!end) {
         pdb::makeObjectAllocatorBlock(blocksize * 1024 * 1024, true);
-        pdb::Handle<pdb::Vector<pdb::Handle<DoubleVector>>> storeMe =
-            pdb::makeObject<pdb::Vector<pdb::Handle<DoubleVector>>>();
+        pdb::Handle<pdb::Vector<pdb::Handle<SearchProgramData>>> storeMe =
+            pdb::makeObject<pdb::Vector<pdb::Handle<SearchProgramData>>>();
         try {
 
           while (1) {
@@ -274,8 +275,8 @@ int main(int argc, char *argv[]) {
                 end = true;
                 break;
               } else {
-                pdb::Handle<DoubleVector> myData =
-                    pdb::makeObject<DoubleVector>(dim);
+                pdb::Handle<SearchProgramData> myData =
+                    pdb::makeObject<SearchProgramData>(dim);
                 std::stringstream lineStream(line);
                 double value;
                 int index = 0;
@@ -289,8 +290,8 @@ int main(int argc, char *argv[]) {
               }
             } else {
               rollback = false;
-              pdb::Handle<DoubleVector> myData =
-                  pdb::makeObject<DoubleVector>(dim);
+              pdb::Handle<SearchProgramData> myData =
+                  pdb::makeObject<SearchProgramData>(dim);
               std::stringstream lineStream(line);
               double value;
               int index = 0;
@@ -309,9 +310,9 @@ int main(int argc, char *argv[]) {
           // send the rest of data at the end, it can happen that the exception
           // never
           // happens.
-          pdbClient.sendData<DoubleVector>(
+          pdbClient.sendData<SearchProgramData>(
                   std::pair<std::string, std::string>("code_search_input_set",
-                                                      "code_search_db"),
+                                                      "code_search_db7"),
                   storeMe);
 
           numData += storeMe->size();
@@ -320,9 +321,9 @@ int main(int argc, char *argv[]) {
 
           pdbClient.flushData();
         } catch (pdb::NotEnoughSpace &n) {
-          pdbClient.sendData<DoubleVector>(
+          pdbClient.sendData<SearchProgramData>(
                   std::pair<std::string, std::string>("code_search_input_set",
-                                                      "code_search_db"),
+                                                      "code_search_db7"),
                   storeMe);
 
           numData += storeMe->size();

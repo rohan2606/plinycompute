@@ -24,7 +24,7 @@
 #include "PDBVector.h"
 #include <vector>
 
-using namespace pdb;
+namespace pdb{
 
 // SearchProgramData
 class SearchProgramData : public Object {
@@ -68,6 +68,7 @@ public:
   }
 
   ~SearchProgramData() {}
-};
 
+};
+}
 #endif
