@@ -30,8 +30,10 @@ namespace pdb{
 class SearchProgramData : public Object {
 
 private:
-  Handle<Vector<double>> DoubleVec = nullptr;
+  Handle<Vector<double>> LatentDoubleVec = nullptr;
+  double ProbY = -1000.00;
   size_t size = 0;
+  String Prog = "";
 
 public:
   ENABLE_DEEP_COPY
@@ -40,14 +42,14 @@ public:
 
   SearchProgramData(size_t dim) {
     this->size = dim;
-    DoubleVec = makeObject<Vector<double>>(size, size);
-     //this->DoubleVec.resize(dim);
+    LatentDoubleVec = makeObject<Vector<double>>(size, size);
+     //this->LatentDoubleVec.resize(dim);
   }
 
   void setDouble(int i,double value){
 
     if (i < this->size) {
-        (*DoubleVec)[i] = value;
+        (*LatentDoubleVec)[i] = value;
     } else {
         std::cout << "Error in SearchProgramData: Cannot assign the value " << value << "to the pos "
                   << i << std::endl;
@@ -55,12 +57,21 @@ public:
     }
   }
 
+  void setProbY(double value){
+     this->ProbY = value;
+  }
+
+
+  void setProg(String inpProg){
+    this->Prog = inpProg;
+  }
+
   size_t getSize() {
       return this->size;
   }
 
   void print() {
-      double* rawData = DoubleVec->c_ptr();
+      double* rawData = LatentDoubleVec->c_ptr();
       for (int i = 0; i < this->getSize(); i++) {
           std::cout << i << ": " << rawData[i] << "; ";
       }

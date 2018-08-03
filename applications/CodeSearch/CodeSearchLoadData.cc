@@ -145,7 +145,7 @@ int main(int argc, char *argv[]) {
 
   int iter = 1;
   int k = 2;
-  int dim = 4;
+  int dim = 3;
   int numData = 10;
   double convergenceTol = 0.001; // Convergence threshold
 
@@ -196,10 +196,10 @@ int main(int argc, char *argv[]) {
 
   if (whetherToAddData == true) {
     // now, create a new database
-    pdbClient.createDatabase("code_search_db7");
+    pdbClient.createDatabase("code_search_db42");
 
     // now, create a new set in that database
-    pdbClient.createSet<SearchProgramData>("code_search_db7", "code_search_input_set");
+    pdbClient.createSet<SearchProgramData>("code_search_db42", "code_search_input_set");
   }
 
   // Step 2. Add data
@@ -236,14 +236,14 @@ int main(int argc, char *argv[]) {
 
           pdbClient.sendData<SearchProgramData>(
                   std::pair<std::string, std::string>("code_search_input_set",
-                                                      "code_search_db7"),
+                                                      "code_search_db42"),
                   storeMe);
         } catch (pdb::NotEnoughSpace &n) {
           COUT << "Added " << storeMe->size() << " Total: " << addedData
                << std::endl;
           pdbClient.sendData<SearchProgramData>(
                   std::pair<std::string, std::string>("code_search_input_set",
-                                                      "code_search_db7"),
+                                                      "code_search_db42"),
                   storeMe);
         }
         COUT << blocksize << "MB data sent to dispatcher server~~" << std::endl;
@@ -284,7 +284,25 @@ int main(int argc, char *argv[]) {
                   myData->setDouble(index, value);
                   COUT << value << endl;
                   index++;
+                  if (index == dim){
+                    break;
+                  }
                 }
+                //Read ProbY
+                while (lineStream >> value){
+                  COUT << "ProbY is :: " << value << endl;
+                  myData->setProbY(value);
+                  break;
+                }
+                // Read the Program from here
+                std::string temp;
+                std::string prog = "";
+                while (lineStream >> temp){
+                  prog = prog + temp;
+                }
+                myData->setProg(prog);
+                COUT << prog << endl;
+                
                 storeMe->push_back(myData);
                 // myData->print();
               }
@@ -300,7 +318,25 @@ int main(int argc, char *argv[]) {
                 myData->setDouble(index, value);
                 COUT << value << endl;
                 index++;
+                if (index == dim){
+                  break;
+                }
               }
+              //Read ProbY
+              while (lineStream >> value){
+                COUT << "ProbY is :: " << value << endl;
+                myData->setProbY(value);
+                break;
+              }
+              // Read the Program from here
+              std::string temp;
+              std::string prog = "";
+              while (lineStream >> temp){
+                prog = prog + temp;
+              }
+              myData->setProg(prog);
+              COUT << prog << endl;
+
               storeMe->push_back(myData);
             }
           }
@@ -312,7 +348,7 @@ int main(int argc, char *argv[]) {
           // happens.
           pdbClient.sendData<SearchProgramData>(
                   std::pair<std::string, std::string>("code_search_input_set",
-                                                      "code_search_db7"),
+                                                      "code_search_db42"),
                   storeMe);
 
           numData += storeMe->size();
@@ -323,7 +359,7 @@ int main(int argc, char *argv[]) {
         } catch (pdb::NotEnoughSpace &n) {
           pdbClient.sendData<SearchProgramData>(
                   std::pair<std::string, std::string>("code_search_input_set",
-                                                      "code_search_db7"),
+                                                      "code_search_db42"),
                   storeMe);
 
           numData += storeMe->size();
