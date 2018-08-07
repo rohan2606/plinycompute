@@ -302,7 +302,7 @@ int main(int argc, char *argv[]) {
                 }
                 myData->setProg(prog);
                 COUT << prog << endl;
-                
+
                 storeMe->push_back(myData);
                 // myData->print();
               }
@@ -384,6 +384,36 @@ int main(int argc, char *argv[]) {
        << std::chrono::duration_cast<std::chrono::duration<float>>(end - begin)
               .count()
        << " secs." << std::endl;
+
+   // this is the object allocation block where all of this stuff will reside
+   const UseTemporaryAllocationBlock tempBlock{1024 * 1024 * 128};\
+
+   Handle<Vector<double>> myQuery = makeObject<Vector<double>>();
+
+   Handle<Computation> myScanSet =
+    makeObject<ScanUserSet<SearchProgramData>>("code_search_db42", "code_search_input_set");
+   Handle<Computation> myTopK = makeObject<TopProgram>(k, *myQuery);
+   myTopK->setInput(myScanSet);
+
+   Handle<Computation> myWriter = makeObject<ProgramResultWriter>("code_search_db42", "code_search_output_set");
+   myWriter->setInput(myTopK);
+
+   std::cout << "Ready to start computations" << std::endl;
+   auto begin = std::chrono::high_resolution_clock::now();
+   pdbClient.executeComputations(gmmIteration);
+   auto end = std::chrono::high_resolution_clock::now();
+
+   std::cout << "The query is executed successfully!" << std::endl;
+   float timeDifference =
+       (float(std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count())) /
+       (float)1000000000;
+   std::cout << "#TimeDuration: " << timeDifference << " Second " << std::endl;
+
+
+
 }
+
+
+
 
 #endif

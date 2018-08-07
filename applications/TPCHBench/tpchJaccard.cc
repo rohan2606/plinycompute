@@ -94,6 +94,7 @@ int main(int argc, char* argv[]) {
     Handle<Computation> myScanSet = makeObject<ScanCustomerSet>("TPCH_db", "tpch_bench_set1");
     Handle<Computation> myTopK = makeObject<TopJaccard>(k, *myQuery);
     myTopK->setInput(myScanSet);
+
     Handle<Computation> myWriter = makeObject<JaccardResultWriter>("TPCH_db", "result");
     myWriter->setInput(myTopK);
 

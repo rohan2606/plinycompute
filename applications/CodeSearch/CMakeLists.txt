@@ -1,5 +1,3 @@
-
-
 ###
 ### SharedObjects
 ###
@@ -17,8 +15,18 @@ endforeach()
 
 # create the target
 add_pdb_application(CodeSearchLoadData)
+
+
+add_dependencies(TopProgram SearchProgramData)
+add_dependencies(TopProgram AllParts)
+add_dependencies(TopProgram Customer)
+
 add_dependencies(CodeSearchLoadData SearchProgramData)
+add_dependencies(CodeSearchLoadData TopProgram)
+add_dependencies(CodeSearchLoadData ProgramResultWriter)
 
 
 # add a build dependency to build-tests target
 add_dependencies(build-ml-tests CodeSearchLoadData)
+add_dependencies(build-ml-tests TopProgram)
+add_dependencies(build-ml-tests ProgramResultWriter)
