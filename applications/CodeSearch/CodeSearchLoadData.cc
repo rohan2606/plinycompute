@@ -29,6 +29,9 @@
 
 #include "DataTypes.h"
 #include "SearchProgramData.h"
+#include "TopProgram.h"
+#include "ProgramResultWriter.h"
+
 #include "Set.h"
 
 #include <chrono>
@@ -75,6 +78,7 @@ int main(int argc, char *argv[]) {
           "#randomData[Y/N] #addData[Y/N] "
           "#niter, #clusters #nDatapoints #nDimensions "
           "#pathToInputFile(randomData == N)"
+          "./bin/CodeSearchLoadData Y N 256 localhost Y"
        << std::endl;
   if (argc > 1) {
     if (strcmp(argv[1], "N") == 0) {
@@ -120,16 +124,10 @@ int main(int argc, char *argv[]) {
   }
   COUT << "Manager IP Address is " << managerIp << std::endl;
 
-  bool randomData = true;
-  if (argc > 5) {
-    if (strcmp(argv[5], "N") == 0) {
-      randomData = false;
-    }
-  }
 
   bool whetherToAddData = true;
-  if (argc > 6) {
-    if (strcmp(argv[6], "N") == 0) {
+  if (argc > 5) {
+    if (strcmp(argv[5], "N") == 0) {
       whetherToAddData = false;
     }
   }
@@ -144,25 +142,25 @@ int main(int argc, char *argv[]) {
   COUT << std::endl;
 
   int iter = 1;
-  int k = 2;
+  int k = 1;
   int dim = 3;
   int numData = 10;
   double convergenceTol = 0.001; // Convergence threshold
 
 
-  if (argc > 7) {
-    numData = std::stoi(argv[7]);
+  if (argc > 6) {
+    numData = std::stoi(argv[6]);
   }
   COUT << "The number of data points: " << numData << std::endl;
 
-  if (argc > 8) {
-    dim = std::stoi(argv[8]);
+  if (argc >7) {
+    dim = std::stoi(argv[7]);
   }
   COUT << "The dimension of each data point: " << dim << std::endl;
 
   std::string fileName = "/home/ubuntu/code_search_data.txt";
-  if (argc > 9) {
-    fileName = argv[9];
+  if (argc > 8) {
+    fileName = argv[8];
   }
 
   COUT << "Input file: " << fileName << std::endl;
@@ -178,6 +176,8 @@ int main(int argc, char *argv[]) {
   PDBClient pdbClient(8108, managerIp);
 
   pdbClient.registerType("libraries/libSearchProgramData.so");
+  pdbClient.registerType("libraries/libTopProgram.so");
+  pdbClient.registerType("libraries/libProgramResultWriter.so");
   string errMsg;
 
   //    srand(time(0));
@@ -196,10 +196,10 @@ int main(int argc, char *argv[]) {
 
   if (whetherToAddData == true) {
     // now, create a new database
-    pdbClient.createDatabase("code_search_db42");
+    pdbClient.createDatabase("code_search_db04");
 
     // now, create a new set in that database
-    pdbClient.createSet<SearchProgramData>("code_search_db42", "code_search_input_set");
+    pdbClient.createSet<SearchProgramData>("code_search_db04", "code_search_input_set");
   }
 
   // Step 2. Add data
@@ -207,54 +207,6 @@ int main(int argc, char *argv[]) {
   auto begin = std::chrono::high_resolution_clock::now();
 
   if (whetherToAddData == true) {
-    if (randomData == true) {
-
-      int addedData = 0;
-      while (addedData < numData) {
-
-        pdb::makeObjectAllocatorBlock(blocksize * 1024 * 1024, true);
-
-        pdb::Handle<pdb::Vector<pdb::Handle<SearchProgramData>>> storeMe =
-            pdb::makeObject<pdb::Vector<pdb::Handle<SearchProgramData>>>();
-        try {
-          double bias = 0;
-          for (int i = addedData; i < numData; i++) {
-            pdb::Handle<SearchProgramData> myData =
-                pdb::makeObject<SearchProgramData>(dim);
-            for (int j = 0; j < dim; j++) {
-
-              std::uniform_real_distribution<> unif(0, 1);
-              bias = unif(randomGen) * 0.01;
-              myData->setDouble(j, i % k * 3 + bias);
-            }
-            storeMe->push_back(myData);
-            addedData += 1;
-          }
-
-          COUT << "Added " << storeMe->size() << " Total: " << addedData
-               << std::endl;
-
-          pdbClient.sendData<SearchProgramData>(
-                  std::pair<std::string, std::string>("code_search_input_set",
-                                                      "code_search_db42"),
-                  storeMe);
-        } catch (pdb::NotEnoughSpace &n) {
-          COUT << "Added " << storeMe->size() << " Total: " << addedData
-               << std::endl;
-          pdbClient.sendData<SearchProgramData>(
-                  std::pair<std::string, std::string>("code_search_input_set",
-                                                      "code_search_db42"),
-                  storeMe);
-        }
-        COUT << blocksize << "MB data sent to dispatcher server~~" << std::endl;
-
-      } // End while
-
-      // to write back all buffered records
-      pdbClient.flushData();
-
-    } else { // Load from file
-
       numData = 0;
       std::ifstream inFile(fileName.c_str());
       std::string line;
@@ -269,75 +221,74 @@ int main(int argc, char *argv[]) {
         try {
 
           while (1) {
-            if (!rollback) {
-              //      std::istringstream iss(line);
-              if (!std::getline(inFile, line)) {
-                end = true;
-                break;
-              } else {
-                pdb::Handle<SearchProgramData> myData =
-                    pdb::makeObject<SearchProgramData>(dim);
-                std::stringstream lineStream(line);
-                double value;
-                int index = 0;
-                while (lineStream >> value) {
-                  myData->setDouble(index, value);
-                  COUT << value << endl;
-                  index++;
-                  if (index == dim){
+                if (!rollback) {
+                    //      std::istringstream iss(line);
+                    if (!std::getline(inFile, line)) {
+                      end = true;
+                      break;
+                    }
+                    else
+                    {
+                          pdb::Handle<SearchProgramData> myData =
+                              pdb::makeObject<SearchProgramData>(dim);
+                          std::stringstream lineStream(line);
+                          double value;
+                          int index = 0;
+                          while (lineStream >> value) {
+                              myData->setDouble(index, value);
+                              index++;
+                              if (index == dim){
+                                break;
+                              }
+                          }
+                          //Read ProbY
+                          while (lineStream >> value)
+                          {
+                            myData->setProbY(value);
+                            break;
+                          }
+                          // Read the Program from here
+                          std::string temp;
+                          std::string prog = "";
+                          while (lineStream >> temp){
+                            prog = prog + temp;
+                          }
+                          myData->setProg(prog);
+
+                          storeMe->push_back(myData);
+                          // myData->print();
+                    }
+                }
+                else
+                {
+                  rollback = false;
+                  pdb::Handle<SearchProgramData> myData =
+                      pdb::makeObject<SearchProgramData>(dim);
+                  std::stringstream lineStream(line);
+                  double value;
+                  int index = 0;
+                  while (lineStream >> value) {
+                    //(*myData)[index] = value;
+                    myData->setDouble(index, value);
+                    index++;
+                    if (index == dim){
+                      break;
+                    }
+                  }
+                  //Read ProbY
+                  while (lineStream >> value){
+                    myData->setProbY(value);
                     break;
                   }
-                }
-                //Read ProbY
-                while (lineStream >> value){
-                  COUT << "ProbY is :: " << value << endl;
-                  myData->setProbY(value);
-                  break;
-                }
-                // Read the Program from here
-                std::string temp;
-                std::string prog = "";
-                while (lineStream >> temp){
-                  prog = prog + temp;
-                }
-                myData->setProg(prog);
-                COUT << prog << endl;
+                  // Read the Program from here
+                  std::string temp;
+                  std::string prog = "";
+                  while (lineStream >> temp){
+                    prog = prog + temp;
+                  }
+                  myData->setProg(prog);
 
-                storeMe->push_back(myData);
-                // myData->print();
-              }
-            } else {
-              rollback = false;
-              pdb::Handle<SearchProgramData> myData =
-                  pdb::makeObject<SearchProgramData>(dim);
-              std::stringstream lineStream(line);
-              double value;
-              int index = 0;
-              while (lineStream >> value) {
-                //(*myData)[index] = value;
-                myData->setDouble(index, value);
-                COUT << value << endl;
-                index++;
-                if (index == dim){
-                  break;
-                }
-              }
-              //Read ProbY
-              while (lineStream >> value){
-                COUT << "ProbY is :: " << value << endl;
-                myData->setProbY(value);
-                break;
-              }
-              // Read the Program from here
-              std::string temp;
-              std::string prog = "";
-              while (lineStream >> temp){
-                prog = prog + temp;
-              }
-              myData->setProg(prog);
-              COUT << prog << endl;
-
-              storeMe->push_back(myData);
+                  storeMe->push_back(myData);
             }
           }
 
@@ -348,7 +299,7 @@ int main(int argc, char *argv[]) {
           // happens.
           pdbClient.sendData<SearchProgramData>(
                   std::pair<std::string, std::string>("code_search_input_set",
-                                                      "code_search_db42"),
+                                                      "code_search_db04"),
                   storeMe);
 
           numData += storeMe->size();
@@ -359,7 +310,7 @@ int main(int argc, char *argv[]) {
         } catch (pdb::NotEnoughSpace &n) {
           pdbClient.sendData<SearchProgramData>(
                   std::pair<std::string, std::string>("code_search_input_set",
-                                                      "code_search_db42"),
+                                                      "code_search_db04"),
                   storeMe);
 
           numData += storeMe->size();
@@ -373,10 +324,12 @@ int main(int argc, char *argv[]) {
 
       } // while not end
       inFile.close();
-    } // End load data!!
 
 
   } // End if - whetherToAddData = true
+
+
+  //pdbClient.removeSet("code_search_db04", "result");
 
   auto end = std::chrono::high_resolution_clock::now();
 
@@ -385,23 +338,35 @@ int main(int argc, char *argv[]) {
               .count()
        << " secs." << std::endl;
 
-   // this is the object allocation block where all of this stuff will reside
-   const UseTemporaryAllocationBlock tempBlock{1024 * 1024 * 128};\
 
+
+
+   // this is the object allocation block where all of this stuff will reside
+   // pdb::makeObjectAllocatorBlock(blocksize * 1024 * 1024, true);
+
+   pdbClient.createSet<TopKQueue<double, SearchProgramData>>("code_search_db04", "result");
    Handle<Vector<double>> myQuery = makeObject<Vector<double>>();
 
+
+   int i = 0;
+   while ( i < dim) {
+       double val = 0.0;
+       myQuery->push_back(val);
+       i+=1;
+   }
+
    Handle<Computation> myScanSet =
-    makeObject<ScanUserSet<SearchProgramData>>("code_search_db42", "code_search_input_set");
+    makeObject<ScanUserSet<SearchProgramData>>("code_search_db04", "code_search_input_set");
    Handle<Computation> myTopK = makeObject<TopProgram>(k, *myQuery);
    myTopK->setInput(myScanSet);
 
-   Handle<Computation> myWriter = makeObject<ProgramResultWriter>("code_search_db42", "code_search_output_set");
+   Handle<Computation> myWriter = makeObject<ProgramResultWriter>("code_search_db04", "result");
    myWriter->setInput(myTopK);
 
    std::cout << "Ready to start computations" << std::endl;
-   auto begin = std::chrono::high_resolution_clock::now();
-   pdbClient.executeComputations(gmmIteration);
-   auto end = std::chrono::high_resolution_clock::now();
+   begin = std::chrono::high_resolution_clock::now();
+   pdbClient.executeComputations(myWriter);
+   end = std::chrono::high_resolution_clock::now();
 
    std::cout << "The query is executed successfully!" << std::endl;
    float timeDifference =

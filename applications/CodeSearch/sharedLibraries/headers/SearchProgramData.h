@@ -95,7 +95,14 @@ public:
 
   double getSquaredDistance(Vector<double> queryProg) {
 
-      return 0.0;
+
+      double sum = 0;double val;
+      for (int i=0; i < this->size; i++) {
+        val = (*LatentDoubleVec)[i];
+        sum += val * val;
+      }
+      return sum;
+
       // # a1 = tf.placeholder(tf.float32,[self.model.config.latent_size])
       // a1_in = tf.placeholder(tf.float32,[])
       // a1 = tf.tile(tf.reshape(a1_in,[1]),[self.model.config.latent_size])

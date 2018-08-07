@@ -22,8 +22,9 @@
 #include "WriteUserSet.h"
 #include "TopProgram.h"
 
-using namespace pdb;
-class ProgramResultWriter : public WriteUserSet<TopKQueue<double, String>> {
+namespace pdb{
+
+class ProgramResultWriter : public WriteUserSet<TopKQueue<double,  Handle<SearchProgramData>>> {
 
 public:
     ENABLE_DEEP_COPY
@@ -35,5 +36,6 @@ public:
     }
 };
 
+}
 
 #endif
