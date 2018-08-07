@@ -31,7 +31,6 @@
 #include "SearchProgramData.h"
 #include "TopProgram.h"
 #include "ProgramResultWriter.h"
-
 #include "Set.h"
 
 #include <chrono>
@@ -75,10 +74,8 @@ int main(int argc, char *argv[]) {
   //***********************************************************************************
 
   COUT << "Usage: #printResult[Y/N] #clusterMode[Y/N] blocksSize[MB] #managerIp "
-          "#randomData[Y/N] #addData[Y/N] "
-          "#niter, #clusters #nDatapoints #nDimensions "
-          "#pathToInputFile(randomData == N)"
-          "./bin/CodeSearchLoadData Y N 256 localhost Y"
+          "#addData[Y/N]" "#nDimensions" "#topKResults" "#pathToInputFile(addData == Y)"
+          "./bin/CodeSearchLoadData Y N 256 localhost Y 3 1 /home/ubuntu/code_search_data"
        << std::endl;
   if (argc > 1) {
     if (strcmp(argv[1], "N") == 0) {
@@ -88,7 +85,9 @@ int main(int argc, char *argv[]) {
       printResult = true;
       COUT << "Will print result." << std::endl;
     }
-  } else {
+  }
+  else
+  {
     COUT << "Will print result. If you don't want to print result, you can add "
             "N as the first "
             "parameter to disable result printing."
@@ -102,7 +101,8 @@ int main(int argc, char *argv[]) {
     } else {
       clusterMode = false;
     }
-  } else {
+  }
+  else {
     COUT << "Will run on local node. If you want to run on cluster, you can "
             "add any character "
             "as the second parameter to run on the cluster configured by "
@@ -114,8 +114,6 @@ int main(int argc, char *argv[]) {
   if (argc > 3) {
     blocksize = atoi(argv[3]);
   }
-  // numOfMb = 10; //Force it to be 64 by now.
-
   COUT << "To add data with size: " << blocksize << "MB" << std::endl;
 
   std::string managerIp = "localhost";
@@ -132,6 +130,24 @@ int main(int argc, char *argv[]) {
     }
   }
 
+  int dim = 3;
+  if (argc > 6) {
+    dim = std::stoi(argv[6]);
+  }
+  COUT << "The dimension of each data point: " << dim << std::endl;
+
+
+  int k = 1;
+  if (argc > 7) {
+    k = std::stoi(argv[7]);
+  }
+  COUT << "The number of TopK points: " << k << std::endl;
+
+  std::string fileName = "/home/ubuntu/code_search_data.txt";
+  if (argc > 8) {
+    fileName = argv[8];
+  }
+
   COUT << blue << std::endl;
   COUT << "*****************************************" << std::endl;
   COUT << "Code Search starts : " << std::endl;
@@ -141,27 +157,7 @@ int main(int argc, char *argv[]) {
   COUT << "The Code Search paramers are: " << std::endl;
   COUT << std::endl;
 
-  int iter = 1;
-  int k = 1;
-  int dim = 3;
-  int numData = 10;
-  double convergenceTol = 0.001; // Convergence threshold
-
-
-  if (argc > 6) {
-    numData = std::stoi(argv[6]);
-  }
-  COUT << "The number of data points: " << numData << std::endl;
-
-  if (argc >7) {
-    dim = std::stoi(argv[7]);
-  }
-  COUT << "The dimension of each data point: " << dim << std::endl;
-
-  std::string fileName = "/home/ubuntu/code_search_data.txt";
-  if (argc > 8) {
-    fileName = argv[8];
-  }
+  int numData;
 
   COUT << "Input file: " << fileName << std::endl;
   COUT << std::endl;
@@ -169,7 +165,7 @@ int main(int argc, char *argv[]) {
   COUT << std::endl;
 
   //***********************************************************************************
-  //**** LOAD DATA
+  //*********************** LOAD DATA****************
   //********************************************************************
   //***********************************************************************************
 
@@ -192,22 +188,18 @@ int main(int argc, char *argv[]) {
 
   // Step 1. Create Database and Set
   // now, register a type for user data
-  // TODO: once sharedLibrary is supported, add this line back!!!
-
-  if (whetherToAddData == true) {
-    // now, create a new database
-    pdbClient.createDatabase("code_search_db04");
-
-    // now, create a new set in that database
-    pdbClient.createSet<SearchProgramData>("code_search_db04", "code_search_input_set");
-  }
-
-  // Step 2. Add data
 
   auto begin = std::chrono::high_resolution_clock::now();
 
+
+
   if (whetherToAddData == true) {
+      // now, create a new database
+      pdbClient.createDatabase("code_search_db13");
+      // now, create a new set in that database
+      pdbClient.createSet<SearchProgramData>("code_search_db13", "code_search_input_set");
       numData = 0;
+
       std::ifstream inFile(fileName.c_str());
       std::string line;
       bool rollback = false;
@@ -299,7 +291,7 @@ int main(int argc, char *argv[]) {
           // happens.
           pdbClient.sendData<SearchProgramData>(
                   std::pair<std::string, std::string>("code_search_input_set",
-                                                      "code_search_db04"),
+                                                      "code_search_db13"),
                   storeMe);
 
           numData += storeMe->size();
@@ -310,7 +302,7 @@ int main(int argc, char *argv[]) {
         } catch (pdb::NotEnoughSpace &n) {
           pdbClient.sendData<SearchProgramData>(
                   std::pair<std::string, std::string>("code_search_input_set",
-                                                      "code_search_db04"),
+                                                      "code_search_db13"),
                   storeMe);
 
           numData += storeMe->size();
@@ -329,7 +321,7 @@ int main(int argc, char *argv[]) {
   } // End if - whetherToAddData = true
 
 
-  //pdbClient.removeSet("code_search_db04", "result");
+  //pdbClient.removeSet("code_search_db13", "result");
 
   auto end = std::chrono::high_resolution_clock::now();
 
@@ -344,7 +336,7 @@ int main(int argc, char *argv[]) {
    // this is the object allocation block where all of this stuff will reside
    // pdb::makeObjectAllocatorBlock(blocksize * 1024 * 1024, true);
 
-   pdbClient.createSet<TopKQueue<double, SearchProgramData>>("code_search_db04", "result");
+   pdbClient.createSet<TopKQueue<double, SearchProgramData>>("code_search_db13", "result");
    Handle<Vector<double>> myQuery = makeObject<Vector<double>>();
 
 
@@ -356,11 +348,11 @@ int main(int argc, char *argv[]) {
    }
 
    Handle<Computation> myScanSet =
-    makeObject<ScanUserSet<SearchProgramData>>("code_search_db04", "code_search_input_set");
+    makeObject<ScanUserSet<SearchProgramData>>("code_search_db13", "code_search_input_set");
    Handle<Computation> myTopK = makeObject<TopProgram>(k, *myQuery);
    myTopK->setInput(myScanSet);
 
-   Handle<Computation> myWriter = makeObject<ProgramResultWriter>("code_search_db04", "result");
+   Handle<Computation> myWriter = makeObject<ProgramResultWriter>("code_search_db13", "result");
    myWriter->setInput(myTopK);
 
    std::cout << "Ready to start computations" << std::endl;
@@ -374,6 +366,29 @@ int main(int argc, char *argv[]) {
        (float)1000000000;
    std::cout << "#TimeDuration: " << timeDifference << " Second " << std::endl;
 
+
+
+
+   // now iterate through the result
+   SetIterator<TopKQueue<double, Handle<SearchProgramData>>> result =
+           pdbClient.getSetIterator<TopKQueue<double, Handle<SearchProgramData>>>("code_search_db13", "result");
+   //std::map<int, int> resultMap;
+
+   for (auto& a : result) {
+       std::cout << "Got back " << a->size() << " items from the top-k query.\n";
+       std::cout << "These items are:\n";
+
+       for (int i = 0; i < a->size(); i++) {
+           std::cout << "score: " << (*a)[i].getScore() << "\n";
+           std::cout << "data: ";
+           (*a)[i].getValue()->print();
+           std::cout << "\n\n";
+       }
+   }
+
+   // for (auto& a : resultMap) {
+   //     std::cout << a.first << "  => " << a.second << '\n';
+   // }
 
 
 }
