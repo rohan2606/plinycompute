@@ -47,6 +47,10 @@
 #include <thread>
 #include <time.h>
 #include <unistd.h>
+#include "json.hpp"
+
+// for convenience
+using json = nlohmann::json;
 
 #define BLOCKSIZE DEFAULT_NET_PAGE_SIZE
 
@@ -68,6 +72,20 @@ int main(int argc, char *argv[]) {
   const std::string magenta("\033[0;35m");
   const std::string reset("\033[0m");
 
+
+  // read a JSON file
+  std::ifstream inp("/home/ubuntu/code_search_data.json");
+  json js;
+  inp >> js;
+
+  // range-based for
+  auto& element = js["Programs"];
+  for (auto& part : element){
+    std::cout << part << std::endl;
+  }
+
+
+  return 1;
   //***********************************************************************************
   //**** INPUT PARAMETERS
   //***************************************************************
@@ -77,6 +95,8 @@ int main(int argc, char *argv[]) {
           "#addData[Y/N]" "#nDimensions" "#topKResults" "#pathToInputFile(addData == Y)"
           "./bin/CodeSearchLoadData Y N 256 localhost Y 3 1 /home/ubuntu/code_search_data"
        << std::endl;
+
+
   if (argc > 1) {
     if (strcmp(argv[1], "N") == 0) {
       printResult = false;
@@ -195,9 +215,9 @@ int main(int argc, char *argv[]) {
 
   if (whetherToAddData == true) {
       // now, create a new database
-      pdbClient.createDatabase("code_search_db13");
+      pdbClient.createDatabase("code_search_db15");
       // now, create a new set in that database
-      pdbClient.createSet<SearchProgramData>("code_search_db13", "code_search_input_set");
+      pdbClient.createSet<SearchProgramData>("code_search_db15", "code_search_input_set");
       numData = 0;
 
       std::ifstream inFile(fileName.c_str());
@@ -291,7 +311,7 @@ int main(int argc, char *argv[]) {
           // happens.
           pdbClient.sendData<SearchProgramData>(
                   std::pair<std::string, std::string>("code_search_input_set",
-                                                      "code_search_db13"),
+                                                      "code_search_db15"),
                   storeMe);
 
           numData += storeMe->size();
@@ -302,7 +322,7 @@ int main(int argc, char *argv[]) {
         } catch (pdb::NotEnoughSpace &n) {
           pdbClient.sendData<SearchProgramData>(
                   std::pair<std::string, std::string>("code_search_input_set",
-                                                      "code_search_db13"),
+                                                      "code_search_db15"),
                   storeMe);
 
           numData += storeMe->size();
@@ -321,7 +341,7 @@ int main(int argc, char *argv[]) {
   } // End if - whetherToAddData = true
 
 
-  //pdbClient.removeSet("code_search_db13", "result");
+  //pdbClient.removeSet("code_search_db15", "result");
 
   auto end = std::chrono::high_resolution_clock::now();
 
@@ -336,7 +356,7 @@ int main(int argc, char *argv[]) {
    // this is the object allocation block where all of this stuff will reside
    // pdb::makeObjectAllocatorBlock(blocksize * 1024 * 1024, true);
 
-   pdbClient.createSet<TopKQueue<double, SearchProgramData>>("code_search_db13", "result");
+   pdbClient.createSet<TopKQueue<double, SearchProgramData>>("code_search_db15", "result");
    Handle<Vector<double>> myQuery = makeObject<Vector<double>>();
 
 
@@ -348,11 +368,11 @@ int main(int argc, char *argv[]) {
    }
 
    Handle<Computation> myScanSet =
-    makeObject<ScanUserSet<SearchProgramData>>("code_search_db13", "code_search_input_set");
+    makeObject<ScanUserSet<SearchProgramData>>("code_search_db15", "code_search_input_set");
    Handle<Computation> myTopK = makeObject<TopProgram>(k, *myQuery);
    myTopK->setInput(myScanSet);
 
-   Handle<Computation> myWriter = makeObject<ProgramResultWriter>("code_search_db13", "result");
+   Handle<Computation> myWriter = makeObject<ProgramResultWriter>("code_search_db15", "result");
    myWriter->setInput(myTopK);
 
    std::cout << "Ready to start computations" << std::endl;
@@ -371,7 +391,7 @@ int main(int argc, char *argv[]) {
 
    // now iterate through the result
    SetIterator<TopKQueue<double, Handle<SearchProgramData>>> result =
-           pdbClient.getSetIterator<TopKQueue<double, Handle<SearchProgramData>>>("code_search_db13", "result");
+           pdbClient.getSetIterator<TopKQueue<double, Handle<SearchProgramData>>>("code_search_db15", "result");
    //std::map<int, int> resultMap;
 
    for (auto& a : result) {
