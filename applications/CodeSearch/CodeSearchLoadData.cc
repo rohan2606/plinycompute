@@ -47,11 +47,14 @@
 #include <thread>
 #include <time.h>
 #include <unistd.h>
-#include "json.hpp"
+
+#include "rapidjson/filereadstream.h"
+#include "rapidjson/writer.h"
+#include "rapidjson/document.h"
+#include <vector>
+
 
 // for convenience
-using json = nlohmann::json;
-
 #define BLOCKSIZE DEFAULT_NET_PAGE_SIZE
 
 #define COUT std::cout
@@ -74,15 +77,32 @@ int main(int argc, char *argv[]) {
 
 
   // read a JSON file
-  std::ifstream inp("/home/ubuntu/code_search_data.json");
-  json js;
-  inp >> js;
+  // std::ifstream inp("/home/ubuntu/code_search_data.json");
+  // document holds a json document retrieved from a http GET request
+  // I did not include all of that in this example.  I am only showing
+  // the part of iterating through a nested object and retrieving members.
 
-  // range-based for
-  auto& element = js["Programs"];
-  for (auto& part : element){
-    std::cout << part << std::endl;
-  }
+  FILE* fp = fopen("/home/ubuntu/code_search_data.json", "r");
+  char readBuffer[65536];
+  rapidjson::FileReadStream is(fp, readBuffer, sizeof(readBuffer));
+
+  rapidjson::Document document;
+  document.ParseStream(is);
+  assert(document.IsObject());
+
+
+
+  // Get the nested object that contains the elements I want.
+  // In my case, the nested object in my json document was results
+  // and the values I was after were identified as "t"
+  rapidjson::Value& results = document["Programs"];
+  assert(results.IsArray());
+  for (rapidjson::SizeType i = 0; i < results.Size(); i++) {
+      // Store the value of the element in a vector.
+      std::string temp = results[i]["Prog"].GetString();
+      std::cout << temp << std::endl;
+      }
+
 
 
   return 1;
