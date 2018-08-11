@@ -18,7 +18,7 @@ bigGuy = []
 
 for i in range(1000000):
         prob = []
-        for j in range(3):
+        for j in range(10):
                 prob.append(random.gauss(1,1))
         probY = -1 * random.gauss(100,10)
         Prog = 'This is a String'

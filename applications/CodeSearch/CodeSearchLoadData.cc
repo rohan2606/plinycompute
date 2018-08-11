@@ -82,30 +82,14 @@ int main(int argc, char *argv[]) {
   // I did not include all of that in this example.  I am only showing
   // the part of iterating through a nested object and retrieving members.
 
-  FILE* fp = fopen("/home/ubuntu/code_search_data.json", "r");
-  char readBuffer[65536];
-  rapidjson::FileReadStream is(fp, readBuffer, sizeof(readBuffer));
-
-  rapidjson::Document document;
-  document.ParseStream(is);
-  assert(document.IsObject());
 
 
 
-  // Get the nested object that contains the elements I want.
-  // In my case, the nested object in my json document was results
-  // and the values I was after were identified as "t"
-  rapidjson::Value& results = document["Programs"];
-  assert(results.IsArray());
-  for (rapidjson::SizeType i = 0; i < results.Size(); i++) {
-      // Store the value of the element in a vector.
-      std::string temp = results[i]["Prog"].GetString();
-      std::cout << temp << std::endl;
-      }
 
 
 
-  return 1;
+
+
   //***********************************************************************************
   //**** INPUT PARAMETERS
   //***************************************************************
@@ -170,18 +154,18 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  int dim = 3;
+  int dim = 10;
   if (argc > 6) {
     dim = std::stoi(argv[6]);
   }
   COUT << "The dimension of each data point: " << dim << std::endl;
 
 
-  int k = 1;
+  int Tk = 3;
   if (argc > 7) {
-    k = std::stoi(argv[7]);
+    Tk = std::stoi(argv[7]);
   }
-  COUT << "The number of TopK points: " << k << std::endl;
+  COUT << "The number of TopK points: " << Tk << std::endl;
 
   std::string fileName = "/home/ubuntu/code_search_data.txt";
   if (argc > 8) {
@@ -230,21 +214,33 @@ int main(int argc, char *argv[]) {
   // now, register a type for user data
 
   auto begin = std::chrono::high_resolution_clock::now();
+  FILE* fp = fopen("/home/ubuntu/code_search_data.json", "r");
 
 
-
+  int k;
   if (whetherToAddData == true) {
       // now, create a new database
-      pdbClient.createDatabase("code_search_db15");
+      pdbClient.createDatabase("code_search_db12");
       // now, create a new set in that database
-      pdbClient.createSet<SearchProgramData>("code_search_db15", "code_search_input_set");
-      numData = 0;
+      pdbClient.createSet<SearchProgramData>("code_search_db12", "code_search_input_set");
 
-      std::ifstream inFile(fileName.c_str());
-      std::string line;
+      char readBuffer[65536];
+      rapidjson::FileReadStream is(fp, readBuffer, sizeof(readBuffer));
+
+      rapidjson::Document document;
+      document.ParseStream(is);
+      assert(document.IsObject());
+
+      // Get the nested object that contains the elements I want.
+      // In my case, the nested object in my json document was results
+      // and the values I was after were identified as "t"
+      rapidjson::Value& results = document["Programs"];
+      //assert(results.IsArray());
+
       bool rollback = false;
       bool end = false;
 
+      rapidjson::SizeType i = 0;
       numData = 0;
       while (!end) {
         pdb::makeObjectAllocatorBlock(blocksize * 1024 * 1024, true);
@@ -255,7 +251,7 @@ int main(int argc, char *argv[]) {
           while (1) {
                 if (!rollback) {
                     //      std::istringstream iss(line);
-                    if (!std::getline(inFile, line)) {
+                    if (i >= results.Size()) {
                       end = true;
                       break;
                     }
@@ -263,32 +259,22 @@ int main(int argc, char *argv[]) {
                     {
                           pdb::Handle<SearchProgramData> myData =
                               pdb::makeObject<SearchProgramData>(dim);
-                          std::stringstream lineStream(line);
-                          double value;
-                          int index = 0;
-                          while (lineStream >> value) {
-                              myData->setDouble(index, value);
-                              index++;
-                              if (index == dim){
-                                break;
+                          //std::stringstream lineStream(line);
+                          // while (i < results.Size()) {
+                              myData->setProg(results[i]["Prog"].GetString());
+                              // COUT <<results[i]["Prog"].GetString()<< endl;
+                              myData->setProbY(results[i]["Priors"].GetDouble());
+                              // COUT <<results[i]["Priors"].GetDouble()<< endl;
+                              k = 0;
+                              for (auto& v : results[i]["ProbVec"].GetArray()){
+                                   myData->setDouble(k, v.GetDouble());
+                                   // cout << v.GetDouble() << endl;
+                                   k+=1;
                               }
-                          }
-                          //Read ProbY
-                          while (lineStream >> value)
-                          {
-                            myData->setProbY(value);
-                            break;
-                          }
-                          // Read the Program from here
-                          std::string temp;
-                          std::string prog = "";
-                          while (lineStream >> temp){
-                            prog = prog + temp;
-                          }
-                          myData->setProg(prog);
-
-                          storeMe->push_back(myData);
-                          // myData->print();
+                              storeMe->push_back(myData);
+                              i++;
+                          // }
+                          //myData->setProg(prog);
                     }
                 }
                 else
@@ -296,33 +282,26 @@ int main(int argc, char *argv[]) {
                   rollback = false;
                   pdb::Handle<SearchProgramData> myData =
                       pdb::makeObject<SearchProgramData>(dim);
-                  std::stringstream lineStream(line);
-                  double value;
-                  int index = 0;
-                  while (lineStream >> value) {
-                    //(*myData)[index] = value;
-                    myData->setDouble(index, value);
-                    index++;
-                    if (index == dim){
-                      break;
+                  //std::stringstream lineStream(line);
+                  // while (i < results.Size()) {
+                    myData->setProg(results[i]["Prog"].GetString());
+                    // COUT <<results[i]["Prog"].GetString()<< endl;
+                    myData->setProbY(results[i]["Priors"].GetDouble());
+                    // COUT <<results[i]["Priors"].GetDouble()<< endl;
+                    k = 0;
+                    for (auto& v : results[i]["ProbVec"].GetArray()){
+                         myData->setDouble(k, v.GetDouble());
+                         // cout << v.GetDouble() << endl;
+                         k+=1;
                     }
-                  }
-                  //Read ProbY
-                  while (lineStream >> value){
-                    myData->setProbY(value);
-                    break;
-                  }
-                  // Read the Program from here
-                  std::string temp;
-                  std::string prog = "";
-                  while (lineStream >> temp){
-                    prog = prog + temp;
-                  }
-                  myData->setProg(prog);
+                    storeMe->push_back(myData);
+                    i++;
+                  // }
 
-                  storeMe->push_back(myData);
-            }
-          }
+                  //myData->setProg(prog);
+
+                }
+              }
 
           end = true;
 
@@ -331,8 +310,7 @@ int main(int argc, char *argv[]) {
           // happens.
           pdbClient.sendData<SearchProgramData>(
                   std::pair<std::string, std::string>("code_search_input_set",
-                                                      "code_search_db15"),
-                  storeMe);
+                                                      "code_search_db12"), storeMe);
 
           numData += storeMe->size();
           COUT << "Added " << storeMe->size() << " Total: " << numData
@@ -342,8 +320,7 @@ int main(int argc, char *argv[]) {
         } catch (pdb::NotEnoughSpace &n) {
           pdbClient.sendData<SearchProgramData>(
                   std::pair<std::string, std::string>("code_search_input_set",
-                                                      "code_search_db15"),
-                  storeMe);
+                                                      "code_search_db12"), storeMe);
 
           numData += storeMe->size();
           COUT << "Added " << storeMe->size() << " Total: " << numData
@@ -355,13 +332,13 @@ int main(int argc, char *argv[]) {
                  << std::endl;
 
       } // while not end
-      inFile.close();
+      fclose(fp);
 
 
   } // End if - whetherToAddData = true
 
 
-  //pdbClient.removeSet("code_search_db15", "result");
+  //pdbClient.removeSet("code_search_db12", "result");
 
   auto end = std::chrono::high_resolution_clock::now();
 
@@ -376,7 +353,7 @@ int main(int argc, char *argv[]) {
    // this is the object allocation block where all of this stuff will reside
    // pdb::makeObjectAllocatorBlock(blocksize * 1024 * 1024, true);
 
-   pdbClient.createSet<TopKQueue<double, SearchProgramData>>("code_search_db15", "result");
+   pdbClient.createSet<TopKQueue<double, SearchProgramData>>("code_search_db12", "result");
    Handle<Vector<double>> myQuery = makeObject<Vector<double>>();
 
 
@@ -388,11 +365,11 @@ int main(int argc, char *argv[]) {
    }
 
    Handle<Computation> myScanSet =
-    makeObject<ScanUserSet<SearchProgramData>>("code_search_db15", "code_search_input_set");
-   Handle<Computation> myTopK = makeObject<TopProgram>(k, *myQuery);
+    makeObject<ScanUserSet<SearchProgramData>>("code_search_db12", "code_search_input_set");
+   Handle<Computation> myTopK = makeObject<TopProgram>(Tk, *myQuery);
    myTopK->setInput(myScanSet);
 
-   Handle<Computation> myWriter = makeObject<ProgramResultWriter>("code_search_db15", "result");
+   Handle<Computation> myWriter = makeObject<ProgramResultWriter>("code_search_db12", "result");
    myWriter->setInput(myTopK);
 
    std::cout << "Ready to start computations" << std::endl;
@@ -411,7 +388,7 @@ int main(int argc, char *argv[]) {
 
    // now iterate through the result
    SetIterator<TopKQueue<double, Handle<SearchProgramData>>> result =
-           pdbClient.getSetIterator<TopKQueue<double, Handle<SearchProgramData>>>("code_search_db15", "result");
+           pdbClient.getSetIterator<TopKQueue<double, Handle<SearchProgramData>>>("code_search_db12", "result");
    //std::map<int, int> resultMap;
 
    for (auto& a : result) {
