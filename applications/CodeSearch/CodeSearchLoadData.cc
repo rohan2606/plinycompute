@@ -82,14 +82,6 @@ int main(int argc, char *argv[]) {
   // I did not include all of that in this example.  I am only showing
   // the part of iterating through a nested object and retrieving members.
 
-
-
-
-
-
-
-
-
   //***********************************************************************************
   //**** INPUT PARAMETERS
   //***************************************************************
@@ -232,10 +224,10 @@ int main(int argc, char *argv[]) {
       assert(document.IsObject());
 
       // Get the nested object that contains the elements I want.
-      // In my case, the nested object in my json document was results
+      // In my case, the nested object in my json document was program
       // and the values I was after were identified as "t"
-      rapidjson::Value& results = document["Programs"];
-      //assert(results.IsArray());
+      rapidjson::Value& program = document["Programs"];
+      //assert(program.IsArray());
 
       bool rollback = false;
       bool end = false;
@@ -251,7 +243,7 @@ int main(int argc, char *argv[]) {
           while (1) {
                 if (!rollback) {
                     //      std::istringstream iss(line);
-                    if (i >= results.Size()) {
+                    if (i >= program.Size()) {
                       end = true;
                       break;
                     }
@@ -260,21 +252,37 @@ int main(int argc, char *argv[]) {
                           pdb::Handle<SearchProgramData> myData =
                               pdb::makeObject<SearchProgramData>(dim);
                           //std::stringstream lineStream(line);
-                          // while (i < results.Size()) {
-                              myData->setProg(results[i]["Prog"].GetString());
-                              // COUT <<results[i]["Prog"].GetString()<< endl;
-                              myData->setProbY(results[i]["Priors"].GetDouble());
-                              // COUT <<results[i]["Priors"].GetDouble()<< endl;
-                              k = 0;
-                              for (auto& v : results[i]["ProbVec"].GetArray()){
-                                   myData->setDouble(k, v.GetDouble());
-                                   // cout << v.GetDouble() << endl;
-                                   k+=1;
-                              }
-                              storeMe->push_back(myData);
-                              i++;
-                          // }
-                          //myData->setProg(prog);
+                          // First Set A1, A2 and ProbY
+                          myData->setDoubleA1(program[i]["a1"].GetDouble());
+                          myData->setDoubleA2(program[i]["a2"].GetDouble());
+                          myData->setProbY(program[i]["ProbY"].GetDouble());
+                          // Now set B1
+                          k = 0;
+                          for (auto& v : program[i]["b1"].GetArray()){
+                            myData->setDoubleArrB1(k, v.GetDouble());
+                            k+=1;
+                          }
+                          // Now set B2
+                          k = 0;
+                          for (auto& v : program[i]["b2"].GetArray()){
+                            myData->setDoubleArrB2(k, v.GetDouble());
+                            k+=1;
+                          }
+                          // Setting Program Handles
+                          myData->setFilePtr(program[i]["file"].GetString());
+                          myData->setMethod(program[i]["method"].GetString());
+                          //Setting Program components
+                          myData->setJavaDoc(program[i]["javadoc"].GetString());
+                          myData->setReturnType(program[i]["returnType"].GetString());
+                          myData->setBody(program[i]["body"].GetString());
+
+                          k = 0;
+                          for (auto& v : program[i]["formalParam"].GetArray()){
+                            myData->setFormalParams(v.GetString());
+                            k+=1;
+                          }
+                          storeMe->push_back(myData);
+                          i++;
                     }
                 }
                 else
@@ -283,23 +291,36 @@ int main(int argc, char *argv[]) {
                   pdb::Handle<SearchProgramData> myData =
                       pdb::makeObject<SearchProgramData>(dim);
                   //std::stringstream lineStream(line);
-                  // while (i < results.Size()) {
-                    myData->setProg(results[i]["Prog"].GetString());
-                    // COUT <<results[i]["Prog"].GetString()<< endl;
-                    myData->setProbY(results[i]["Priors"].GetDouble());
-                    // COUT <<results[i]["Priors"].GetDouble()<< endl;
-                    k = 0;
-                    for (auto& v : results[i]["ProbVec"].GetArray()){
-                         myData->setDouble(k, v.GetDouble());
-                         // cout << v.GetDouble() << endl;
-                         k+=1;
-                    }
-                    storeMe->push_back(myData);
-                    i++;
-                  // }
+                  myData->setDoubleA1(program[i]["a1"].GetDouble());
+                  myData->setDoubleA2(program[i]["a2"].GetDouble());
+                  myData->setProbY(program[i]["ProbY"].GetDouble());
+                  // Now set B1
+                  k = 0;
+                  for (auto& v : program[i]["b1"].GetArray()){
+                    myData->setDoubleArrB1(k, v.GetDouble());
+                    k+=1;
+                  }
+                  // Now set B2
+                  k = 0;
+                  for (auto& v : program[i]["b2"].GetArray()){
+                    myData->setDoubleArrB2(k, v.GetDouble());
+                    k+=1;
+                  }
+                  // Setting Program Handles
+                  myData->setFilePtr(program[i]["file"].GetString());
+                  myData->setMethod(program[i]["method"].GetString());
+                  //Setting Program components
+                  myData->setJavaDoc(program[i]["javadoc"].GetString());
+                  myData->setReturnType(program[i]["returnType"].GetString());
+                  myData->setBody(program[i]["body"].GetString());
 
-                  //myData->setProg(prog);
-
+                  k = 0;
+                  for (auto& v : program[i]["formalParam"].GetArray()){
+                    myData->setFormalParams(v.GetString());
+                    k+=1;
+                  }
+                  storeMe->push_back(myData);
+                  i++;
                 }
               }
 
@@ -354,19 +375,19 @@ int main(int argc, char *argv[]) {
    // pdb::makeObjectAllocatorBlock(blocksize * 1024 * 1024, true);
 
    pdbClient.createSet<TopKQueue<double, SearchProgramData>>("code_search_db12", "result");
-   Handle<Vector<double>> myQuery = makeObject<Vector<double>>();
+   Handle<SearchProgramData> myQuery = makeObject<SearchProgramData>();
 
-
-   int i = 0;
-   while ( i < dim) {
-       double val = 0.0;
-       myQuery->push_back(val);
-       i+=1;
-   }
+   //
+   // int i = 0;
+   // while ( i < dim) {
+   //     double val = 0.0;
+   //     myQuery->push_back(val);
+   //     i+=1;
+   // }
 
    Handle<Computation> myScanSet =
     makeObject<ScanUserSet<SearchProgramData>>("code_search_db12", "code_search_input_set");
-   Handle<Computation> myTopK = makeObject<TopProgram>(Tk, *myQuery);
+   Handle<Computation> myTopK = makeObject<TopProgram>(Tk, myQuery);
    myTopK->setInput(myScanSet);
 
    Handle<Computation> myWriter = makeObject<ProgramResultWriter>("code_search_db12", "result");

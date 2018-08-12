@@ -33,7 +33,7 @@ namespace pdb {
 // simiar to the query part list
 class TopProgram : public TopKComp<SearchProgramData, double , Handle<SearchProgramData>> {
 
-    Vector<double> query;
+    Handle<SearchProgramData> query;
     int k = 1;
 
 public:
@@ -41,7 +41,7 @@ public:
 
     TopProgram() {}
 
-    TopProgram(int kIn, Vector<double> query)
+    TopProgram(int kIn, Handle<SearchProgramData> query)
         : k(kIn), query(query) {}
 
     Lambda<TopKQueue<double, Handle<SearchProgramData>>> getValueProjection(

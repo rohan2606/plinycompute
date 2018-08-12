@@ -23,6 +23,7 @@
 #include "Object.h"
 #include "PDBVector.h"
 #include <vector>
+#include <cmath>
 
 namespace pdb{
 
@@ -30,10 +31,24 @@ namespace pdb{
 class SearchProgramData : public Object {
 
 private:
-  Handle<Vector<double>> LatentDoubleVec = nullptr;
-  double ProbY = -1000.00;
-  size_t size = 0;
-  String Prog = "";
+
+  // Search parameters
+  double a1, a2, ProbY;
+  size_t dim = 0;
+  Handle<Vector<double>> b1 = nullptr;
+  Handle<Vector<double>> b2 = nullptr;
+
+  //Program Handles
+  String filePtr = "";
+  String method = "";
+
+  // Program components
+  String javadoc = "";
+  Handle<Vector<String>> FormalParams = nullptr;
+  String returnType = "";
+  String body = "";
+
+
 
 public:
   ENABLE_DEEP_COPY
@@ -41,97 +56,189 @@ public:
   SearchProgramData() {}
 
   SearchProgramData(size_t dim) {
-    this->size = dim;
-    LatentDoubleVec = makeObject<Vector<double>>(size, size);
-     //this->LatentDoubleVec.resize(dim);
+    this->dim = dim;
+    b1 = makeObject<Vector<double>>(dim, dim);
+    b2 = makeObject<Vector<double>>(dim, dim);
   }
 
-  void setDouble(int i,double value){
+  size_t getSize() {
+    return this->dim;
+  }
 
-    if (i < this->size) {
-        (*LatentDoubleVec)[i] = value;
+  void setDoubleArrB1(int i,double value){
+    if (i < this->dim) {
+        (*b1)[i] = value;
     } else {
         std::cout << "Error in SearchProgramData: Cannot assign the value " << value << "to the pos "
                   << i << std::endl;
         exit(-1);
     }
+    return;
+  }
+
+  void setDoubleArrB2(int i,double value){
+    if (i < this->dim) {
+        (*b2)[i] = value;
+    } else {
+        std::cout << "Error in SearchProgramData: Cannot assign the value " << value << "to the pos "
+                  << i << std::endl;
+        exit(-1);
+    }
+    return;
+  }
+
+  void setDoubleA1(double value){
+     this->a1 = value;
+     return;
+  }
+
+  void setDoubleA2(double value){
+     this->a2 = value;
+     return;
   }
 
   void setProbY(double value){
      this->ProbY = value;
+     return;
+  }
+
+  void setFilePtr(String inpFilePtr){
+    this->filePtr = inpFilePtr;
+    return;
+  }
+
+  void setMethod(String inpMethod){
+    this->method = inpMethod;
+    return;
+  }
+
+  void setJavaDoc(String inpJavaDoc){
+    this->javadoc = inpJavaDoc;
+    return;
+  }
+
+  void setReturnType(String inpRetType){
+    this->returnType = inpRetType;
+    return;
+  }
+
+  void setFormalParams(String inpFormalParamI){
+      (*FormalParams).push_back(inpFormalParamI);
+      return;
+  }
+
+  void setBody(String inpBody){
+    this->body = inpBody;
+    return;
+  }
+
+  double getDoubleA1(){
+    return this->a1;
+  }
+
+  double getDoubleA2(){
+    return this->a2;
+  }
+
+  Handle<Vector<double>> getB1(){
+    return this->b1;
+  }
+
+  Handle<Vector<double>> getB2(){
+    return this->b2;
+  }
+
+  double getProbY(){
+    return this->ProbY;
   }
 
 
-  void setProg(String inpProg){
-    this->Prog = inpProg;
+
+  String getFilePtr(){
+    return this->filePtr;
   }
 
-  String getProg(){
-    return this->Prog;
+  String getMethod(){
+    return this->method;
   }
 
-  size_t getSize() {
-      return this->size;
+  String getJavaDoc(){
+    return this->javadoc;
   }
 
-  void print() {
-      double* rawData = LatentDoubleVec->c_ptr();
-      for (int i = 0; i < this->getSize(); i++) {
-          std::cout << i << ": " << rawData[i] << "; ";
-      }
-      std::cout << std::endl;
+  String getReturnType(){
+    return this->returnType;
   }
 
-  // double* getRawData() {
-  //     if (data == nullptr) {
-  //         return nullptr;
-  //     }
-  //     return data->c_ptr();
-  // }
-  //
+  String getFormalParams(){
+      std::string temp = "";
+      for(int i=0;  i < (*FormalParams).size(); i++)
+        temp = temp + (*FormalParams)[i].c_str();
+      return temp;
+  }
 
-
+  String getBody(){
+    return this->body;
+  }
   // to get squared distance following SparkMLLib
 
-  double getSquaredDistance(Vector<double> queryProg) {
+  double getSquaredDistance(Handle<SearchProgramData> queryProg) {
 
 
-      double sum = 0;double val;
-      for (int i=0; i < this->size; i++) {
-        val = (*LatentDoubleVec)[i];
-        sum += val * val;
-      }
-      return sum;
 
-      // # a1 = tf.placeholder(tf.float32,[self.model.config.latent_size])
-      // a1_in = tf.placeholder(tf.float32,[])
-      // a1 = tf.tile(tf.reshape(a1_in,[1]),[self.model.config.latent_size])
-      //
-      // b1_in = tf.placeholder(tf.float32,[self.model.config.latent_size])
-      // b1 = b1_in
-      // # a2 = tf.placeholder(tf.float32,[self.model.config.batch_size,self.model.config.latent_size])
-      // a2_in = tf.placeholder(tf.float32,[self.model.config.batch_size])
-      // a2 = tf.tile(tf.expand_dims(a2_in,axis=1),[1,self.model.config.latent_size])
-      //
-      // b2_in = tf.placeholder(tf.float32,[self.model.config.batch_size,self.model.config.latent_size])
-      // b2 = b2_in
+      double a1_in = queryProg->getDoubleA1();
+      Handle<Vector<double>> b1_in = queryProg->getB1();
+
+      double a2 = this->getDoubleA2();
+      Handle<Vector<double>> b2 = this->getB2();
+
       // t1 = tf.reduce_sum(tf.square(b1)/(4*a1), axis=0) + 0.5 * tf.reduce_sum(tf.log(-a1/np.pi), axis=0)
+      double t1 = 0.5 * this->getSize() * log(-1 * a1_in / M_PI);
+      for (int i=0; i<this->getSize(); i++){
+          t1 += pow( (*b1_in)[i], 2) / (4 * a1_in);
+      }
+
       // t2 = tf.reduce_sum(tf.square(b2)/(4*a2), axis=1) + 0.5 * tf.reduce_sum(tf.log(-a2/np.pi), axis=1)
+      double t2 = 0.5 * this->getSize() * log(-1 * a2 / M_PI);
+      for (int i=0; i<this->getSize(); i++){
+          t2 += pow( (*b2)[i], 2) / (4 * a2);
+      }
       // t3 = 0.5 * self.model.config.latent_size * tf.log(2*np.pi)
-      // c = t1 + t2 - t3
-      //
+      double t3 = 0.5 * this->getSize() * log(2 * M_PI);
+
+      double c = t1 + t2 - t3;
+      //%%###############################################################%%//
+
       // b_star = b1 + b2
+      Handle<Vector<double>> b_star = makeObject<Vector<double>>(this->getSize(), this->getSize());
+      for(int i=0;i<this->getSize();i++){
+          (*b_star)[i] = (*b1_in)[i] + (*b2)[i];
+      }
+
       // a_star = a1 + a2 + 0.5
-      // c_star = tf.reduce_sum(tf.square(b_star)/(4*a_star), axis=1) + 0.5 * tf.reduce_sum(tf.log(-a_star/np.pi), axis=1)
-      // prob = (c - c_star)
-      //
-      // _prob = self.sess.run(prob, feed_dict={a1_in:_a1, b1_in:_b1, a2_in:_a2, b2_in:_b2})
-      //
-      // _prob += np.array(prob_Y)
-      // return _prob
+      double a_star = a1_in + a2 + 0.5;
+      //c_star = tf.reduce_sum(tf.square(b_star)/(4*a_star), axis=1) + 0.5 * tf.reduce_sum(tf.log(-a_star/np.pi), axis=1)
+      double c_star = 0.5 * this->getSize() * log(-1 * a_star / M_PI);
+      for (int i=0; i<this->getSize(); i++){
+          c_star += pow( (*b_star)[i], 2) / (4 * a_star);
+      }
+
+
+      double prob = (c - c_star) + this->getProbY();
+      return prob;
   }
 
+  void print(){
+    std::cout << this->filePtr << std::endl;
+    std::cout << this->javadoc << std::endl;
 
+    std::cout << this->returnType << " "<< this->method << "( " << this->getFormalParams() << ") {" << std::endl;
+    std::cout << this->body << std::endl;
+    std::cout << "}" << std::endl;
+
+
+    return;
+  }
 
   ~SearchProgramData() {}
 
