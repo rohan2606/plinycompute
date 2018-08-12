@@ -44,7 +44,7 @@ private:
 
   // Program components
   String javadoc = "";
-  Handle<Vector<String>> FormalParams = nullptr;
+  Handle<Vector<String>> FormalParams =  makeObject<Vector<String>>();
   String returnType = "";
   String body = "";
 

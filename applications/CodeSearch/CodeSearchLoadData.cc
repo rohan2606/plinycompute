@@ -146,7 +146,7 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  int dim = 10;
+  int dim = 64;
   if (argc > 6) {
     dim = std::stoi(argv[6]);
   }
@@ -206,27 +206,23 @@ int main(int argc, char *argv[]) {
   // now, register a type for user data
 
   auto begin = std::chrono::high_resolution_clock::now();
-  FILE* fp = fopen("/home/ubuntu/code_search_data.json", "r");
+  FILE* fp = fopen("/home/ubuntu/Program_output_json.json", "r");
 
 
   int k;
   if (whetherToAddData == true) {
       // now, create a new database
-      pdbClient.createDatabase("code_search_db12");
+      pdbClient.createDatabase("code_search_db40");
       // now, create a new set in that database
-      pdbClient.createSet<SearchProgramData>("code_search_db12", "code_search_input_set");
+      pdbClient.createSet<SearchProgramData>("code_search_db40", "code_search_input_set");
 
-      char readBuffer[65536];
+      char readBuffer[4*65536];
       rapidjson::FileReadStream is(fp, readBuffer, sizeof(readBuffer));
-
       rapidjson::Document document;
       document.ParseStream(is);
       assert(document.IsObject());
 
-      // Get the nested object that contains the elements I want.
-      // In my case, the nested object in my json document was program
-      // and the values I was after were identified as "t"
-      rapidjson::Value& program = document["Programs"];
+      rapidjson::Value& program = document["programs"];
       //assert(program.IsArray());
 
       bool rollback = false;
@@ -271,16 +267,25 @@ int main(int argc, char *argv[]) {
                           // Setting Program Handles
                           myData->setFilePtr(program[i]["file"].GetString());
                           myData->setMethod(program[i]["method"].GetString());
-                          //Setting Program components
-                          myData->setJavaDoc(program[i]["javadoc"].GetString());
-                          myData->setReturnType(program[i]["returnType"].GetString());
-                          myData->setBody(program[i]["body"].GetString());
+                          // //Setting Program components
+                          if (!program[i]["javadoc"].IsNull())
+                            myData->setJavaDoc(program[i]["javadoc"].GetString());
 
-                          k = 0;
-                          for (auto& v : program[i]["formalParam"].GetArray()){
-                            myData->setFormalParams(v.GetString());
-                            k+=1;
-                          }
+                          // std::cout << program[i]["returnType"].GetString() << std::endl;
+                          if (program[i].HasMember("returnType"))
+                              myData->setReturnType(program[i]["returnType"].GetString());
+
+                          if (program[i].HasMember("body"))
+                              myData->setBody(program[i]["body"].GetString());
+
+                          if (program[i].HasMember("formalParam")){
+                                const rapidjson::Value& a = program[i]["formalParam"].GetArray();
+                                for(int i = 0; i < a.Size(); i++){
+                                  myData->setFormalParams(a[i].GetString());
+                                }
+                            }
+
+
                           storeMe->push_back(myData);
                           i++;
                     }
@@ -309,16 +314,26 @@ int main(int argc, char *argv[]) {
                   // Setting Program Handles
                   myData->setFilePtr(program[i]["file"].GetString());
                   myData->setMethod(program[i]["method"].GetString());
-                  //Setting Program components
-                  myData->setJavaDoc(program[i]["javadoc"].GetString());
-                  myData->setReturnType(program[i]["returnType"].GetString());
-                  myData->setBody(program[i]["body"].GetString());
+                  // //Setting Program components
+                  if (!program[i]["javadoc"].IsNull())
+                    myData->setJavaDoc(program[i]["javadoc"].GetString());
 
-                  k = 0;
-                  for (auto& v : program[i]["formalParam"].GetArray()){
-                    myData->setFormalParams(v.GetString());
-                    k+=1;
-                  }
+                  // std::cout << program[i]["returnType"].GetString() << std::endl;
+                  if (program[i].HasMember("returnType"))
+                      myData->setReturnType(program[i]["returnType"].GetString());
+
+                  if (program[i].HasMember("body"))
+                      myData->setBody(program[i]["body"].GetString());
+
+                  if (program[i].HasMember("formalParam")){
+                        const rapidjson::Value& a = program[i]["formalParam"].GetArray();
+                        for(int i = 0; i < a.Size(); i++){
+                          myData->setFormalParams(a[i].GetString());
+                        }
+                    }
+
+
+
                   storeMe->push_back(myData);
                   i++;
                 }
@@ -331,7 +346,7 @@ int main(int argc, char *argv[]) {
           // happens.
           pdbClient.sendData<SearchProgramData>(
                   std::pair<std::string, std::string>("code_search_input_set",
-                                                      "code_search_db12"), storeMe);
+                                                      "code_search_db40"), storeMe);
 
           numData += storeMe->size();
           COUT << "Added " << storeMe->size() << " Total: " << numData
@@ -341,7 +356,7 @@ int main(int argc, char *argv[]) {
         } catch (pdb::NotEnoughSpace &n) {
           pdbClient.sendData<SearchProgramData>(
                   std::pair<std::string, std::string>("code_search_input_set",
-                                                      "code_search_db12"), storeMe);
+                                                      "code_search_db40"), storeMe);
 
           numData += storeMe->size();
           COUT << "Added " << storeMe->size() << " Total: " << numData
@@ -359,7 +374,7 @@ int main(int argc, char *argv[]) {
   } // End if - whetherToAddData = true
 
 
-  //pdbClient.removeSet("code_search_db12", "result");
+  //pdbClient.removeSet("code_search_db40", "result");
 
   auto end = std::chrono::high_resolution_clock::now();
 
@@ -374,23 +389,20 @@ int main(int argc, char *argv[]) {
    // this is the object allocation block where all of this stuff will reside
    // pdb::makeObjectAllocatorBlock(blocksize * 1024 * 1024, true);
 
-   pdbClient.createSet<TopKQueue<double, SearchProgramData>>("code_search_db12", "result");
-   Handle<SearchProgramData> myQuery = makeObject<SearchProgramData>();
+   pdbClient.createSet<TopKQueue<double, SearchProgramData>>("code_search_db40", "result");
+   Handle<SearchProgramData> myQuery = makeObject<SearchProgramData>(dim);
 
-   //
-   // int i = 0;
-   // while ( i < dim) {
-   //     double val = 0.0;
-   //     myQuery->push_back(val);
-   //     i+=1;
-   // }
+   myQuery->setDoubleA1(0.01);
+   for(int i=0;i < dim; i++){
+     myQuery->setDoubleArrB1(i,0.01);
+   }
 
    Handle<Computation> myScanSet =
-    makeObject<ScanUserSet<SearchProgramData>>("code_search_db12", "code_search_input_set");
+    makeObject<ScanUserSet<SearchProgramData>>("code_search_db40", "code_search_input_set");
    Handle<Computation> myTopK = makeObject<TopProgram>(Tk, myQuery);
    myTopK->setInput(myScanSet);
 
-   Handle<Computation> myWriter = makeObject<ProgramResultWriter>("code_search_db12", "result");
+   Handle<Computation> myWriter = makeObject<ProgramResultWriter>("code_search_db40", "result");
    myWriter->setInput(myTopK);
 
    std::cout << "Ready to start computations" << std::endl;
@@ -409,7 +421,7 @@ int main(int argc, char *argv[]) {
 
    // now iterate through the result
    SetIterator<TopKQueue<double, Handle<SearchProgramData>>> result =
-           pdbClient.getSetIterator<TopKQueue<double, Handle<SearchProgramData>>>("code_search_db12", "result");
+           pdbClient.getSetIterator<TopKQueue<double, Handle<SearchProgramData>>>("code_search_db40", "result");
    //std::map<int, int> resultMap;
 
    for (auto& a : result) {
