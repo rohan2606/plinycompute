@@ -90,7 +90,7 @@ int main(int argc, char *argv[]) {
 
   COUT << "Usage: #printResult[Y/N] #clusterMode[Y/N] blocksSize[MB] #managerIp "
           "#addData[Y/N]" "#nDimensions" "#topKResults" "#pathToInputFile(addData == Y)"
-          "./bin/CodeSearchLoadData Y Y 8 localhost Y 64 1 /home/ubuntu/Program_output_json_old.json"
+          "./bin/CodeSearchLoadData Y Y 8 localhost Y 64 1 /home/ubuntu/Program_output_json.json"
        << std::endl;
 
 
@@ -213,26 +213,22 @@ int main(int argc, char *argv[]) {
   int k;
   if (whetherToAddData == true) {
       // now, create a new database
-      pdbClient.createDatabase("code_search_db12");
+      pdbClient.createDatabase("code_search_db13");
       // now, create a new set in that database
-      COUT << "I am here" << std::endl;
 
-      pdbClient.createSet<SearchProgramData>("code_search_db12", "code_search_input_set");
+      pdbClient.createSet<SearchProgramData>("code_search_db13", "code_search_input_set");
 
-      COUT << "I am there" << std::endl;
-      char readBuffer[4*65536];
+      char readBuffer[256*256];
       rapidjson::FileReadStream is(fp, readBuffer, sizeof(readBuffer));
-      COUT << "I am there 2" << std::endl;
       rapidjson::Document document;
-      COUT << "I am there 3" << std::endl;
       document.ParseStream(is);
-      COUT << "I am there 4" << std::endl;
+
+      COUT << "Document Parsed" << std::endl;
       assert(document.IsObject());
-      COUT << "I am there 5" << std::endl;
+
 
       rapidjson::Value& program = document["programs"];
 
-      COUT << program.Size() << endl;
       COUT << program.Size() << endl;
       fflush(stdout);
       assert(program.IsArray());
@@ -311,7 +307,7 @@ int main(int argc, char *argv[]) {
                   // never happens.
                   pdbClient.sendData<SearchProgramData>(
                           std::pair<std::string, std::string>("code_search_input_set",
-                                                              "code_search_db12"), storeMe);
+                                                              "code_search_db13"), storeMe);
 
                   numData += storeMe->size();
                   COUT << "Added " << storeMe->size() << " Total: " << numData
@@ -322,7 +318,7 @@ int main(int argc, char *argv[]) {
               } catch (pdb::NotEnoughSpace &n) {
                   pdbClient.sendData<SearchProgramData>(
                           std::pair<std::string, std::string>("code_search_input_set",
-                                                          "code_search_db12"), storeMe);
+                                                          "code_search_db13"), storeMe);
 
                   numData += storeMe->size();
                   COUT << "Added " << storeMe->size() << " Total: " << numData
@@ -341,7 +337,7 @@ int main(int argc, char *argv[]) {
   } // End if - whetherToAddData = true
 
   pdb::makeObjectAllocatorBlock(blocksize * 1024 * 1024, true);
-  //pdbClient.removeSet("code_search_db12", "result");
+  //pdbClient.removeSet("code_search_db13", "result");
 
   auto end = std::chrono::high_resolution_clock::now();
 
@@ -356,20 +352,20 @@ int main(int argc, char *argv[]) {
    // this is the object allocation block where all of this stuff will reside
    // pdb::makeObjectAllocatorBlock(blocksize * 1024 * 1024, true);
 
-   pdbClient.createSet<TopKQueue<double, SearchProgramData>>("code_search_db12", "result");
+   pdbClient.createSet<TopKQueue<double, SearchProgramData>>("code_search_db13", "result");
    Handle<SearchProgramData> myQuery = makeObject<SearchProgramData>(dim);
 
-   myQuery->setDoubleA1(0.01);
+   myQuery->setDoubleA1(-0.01);
    for(int i=0;i < dim; i++){
      myQuery->setDoubleArrB1(i,0.01);
    }
 
    Handle<Computation> myScanSet =
-    makeObject<ScanUserSet<SearchProgramData>>("code_search_db12", "code_search_input_set");
+    makeObject<ScanUserSet<SearchProgramData>>("code_search_db13", "code_search_input_set");
    Handle<Computation> myTopK = makeObject<TopProgram>(Tk, myQuery);
    myTopK->setInput(myScanSet);
 
-   Handle<Computation> myWriter = makeObject<ProgramResultWriter>("code_search_db12", "result");
+   Handle<Computation> myWriter = makeObject<ProgramResultWriter>("code_search_db13", "result");
    myWriter->setInput(myTopK);
 
    std::cout << "Ready to start computations" << std::endl;
@@ -379,8 +375,7 @@ int main(int argc, char *argv[]) {
 
    std::cout << "The query is executed successfully!" << std::endl;
    float timeDifference =
-       (float(std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count())) /
-       (float)1000000000;
+       (float(std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count())) / (float)1000000000;
    std::cout << "#TimeDuration: " << timeDifference << " Second " << std::endl;
 
 
@@ -388,7 +383,7 @@ int main(int argc, char *argv[]) {
 
    // now iterate through the result
    SetIterator<TopKQueue<double, Handle<SearchProgramData>>> result =
-           pdbClient.getSetIterator<TopKQueue<double, Handle<SearchProgramData>>>("code_search_db12", "result");
+           pdbClient.getSetIterator<TopKQueue<double, Handle<SearchProgramData>>>("code_search_db13", "result");
    //std::map<int, int> resultMap;
 
    for (auto& a : result) {
