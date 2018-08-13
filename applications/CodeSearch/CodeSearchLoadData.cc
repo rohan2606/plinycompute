@@ -47,6 +47,7 @@
 #include <thread>
 #include <time.h>
 #include <unistd.h>
+#include <cstring>
 
 #include "rapidjson/filereadstream.h"
 #include "rapidjson/writer.h"
@@ -89,7 +90,7 @@ int main(int argc, char *argv[]) {
 
   COUT << "Usage: #printResult[Y/N] #clusterMode[Y/N] blocksSize[MB] #managerIp "
           "#addData[Y/N]" "#nDimensions" "#topKResults" "#pathToInputFile(addData == Y)"
-          "./bin/CodeSearchLoadData Y N 256 localhost Y 3 1 /home/ubuntu/code_search_data"
+          "./bin/CodeSearchLoadData Y Y 8 localhost Y 64 1 /home/ubuntu/Program_output_json_old.json"
        << std::endl;
 
 
@@ -126,7 +127,7 @@ int main(int argc, char *argv[]) {
          << std::endl;
   }
 
-  int blocksize = 256; // by default we add 64MB data
+  int blocksize = 64; // by default we add 64MB data
   if (argc > 3) {
     blocksize = atoi(argv[3]);
   }
@@ -159,7 +160,7 @@ int main(int argc, char *argv[]) {
   }
   COUT << "The number of TopK points: " << Tk << std::endl;
 
-  std::string fileName = "/home/ubuntu/code_search_data.txt";
+  std::string fileName = "/home/ubuntu/Program_output_json.json";
   if (argc > 8) {
     fileName = argv[8];
   }
@@ -170,7 +171,7 @@ int main(int argc, char *argv[]) {
   COUT << "*****************************************" << std::endl;
   COUT << reset << std::endl;
 
-  COUT << "The Code Search paramers are: " << std::endl;
+  COUT << "The Code Search parameters are: " << std::endl;
   COUT << std::endl;
 
   int numData;
@@ -212,18 +213,29 @@ int main(int argc, char *argv[]) {
   int k;
   if (whetherToAddData == true) {
       // now, create a new database
-      pdbClient.createDatabase("code_search_db40");
+      pdbClient.createDatabase("code_search_db12");
       // now, create a new set in that database
-      pdbClient.createSet<SearchProgramData>("code_search_db40", "code_search_input_set");
+      COUT << "I am here" << std::endl;
 
+      pdbClient.createSet<SearchProgramData>("code_search_db12", "code_search_input_set");
+
+      COUT << "I am there" << std::endl;
       char readBuffer[4*65536];
       rapidjson::FileReadStream is(fp, readBuffer, sizeof(readBuffer));
+      COUT << "I am there 2" << std::endl;
       rapidjson::Document document;
+      COUT << "I am there 3" << std::endl;
       document.ParseStream(is);
+      COUT << "I am there 4" << std::endl;
       assert(document.IsObject());
+      COUT << "I am there 5" << std::endl;
 
       rapidjson::Value& program = document["programs"];
-      //assert(program.IsArray());
+
+      COUT << program.Size() << endl;
+      COUT << program.Size() << endl;
+      fflush(stdout);
+      assert(program.IsArray());
 
       bool rollback = false;
       bool end = false;
@@ -234,138 +246,93 @@ int main(int argc, char *argv[]) {
         pdb::makeObjectAllocatorBlock(blocksize * 1024 * 1024, true);
         pdb::Handle<pdb::Vector<pdb::Handle<SearchProgramData>>> storeMe =
             pdb::makeObject<pdb::Vector<pdb::Handle<SearchProgramData>>>();
-        try {
+          try {
 
-          while (1) {
-                if (!rollback) {
+                while (1) {
                     //      std::istringstream iss(line);
-                    if (i >= program.Size()) {
-                      end = true;
-                      break;
-                    }
-                    else
-                    {
-                          pdb::Handle<SearchProgramData> myData =
-                              pdb::makeObject<SearchProgramData>(dim);
-                          //std::stringstream lineStream(line);
-                          // First Set A1, A2 and ProbY
-                          myData->setDoubleA1(program[i]["a1"].GetDouble());
-                          myData->setDoubleA2(program[i]["a2"].GetDouble());
-                          myData->setProbY(program[i]["ProbY"].GetDouble());
-                          // Now set B1
-                          k = 0;
-                          for (auto& v : program[i]["b1"].GetArray()){
-                            myData->setDoubleArrB1(k, v.GetDouble());
-                            k+=1;
+                          if (i >= program.Size()) {
+                                    end = true;
+                                    break;
                           }
-                          // Now set B2
-                          k = 0;
-                          for (auto& v : program[i]["b2"].GetArray()){
-                            myData->setDoubleArrB2(k, v.GetDouble());
-                            k+=1;
+                          else
+                          {
+                                    pdb::Handle<SearchProgramData> myData =
+                                        pdb::makeObject<SearchProgramData>(dim);
+                                    //std::stringstream lineStream(line);
+                                    // First Set A1, A2 and ProbY
+                                    myData->setDoubleA1(program[i]["a1"].GetDouble());
+                                    myData->setDoubleA2(program[i]["a2"].GetDouble());
+                                    myData->setProbY(program[i]["ProbY"].GetDouble());
+                                    // Now set B1
+                                    k = 0;
+                                    for (auto& v : program[i]["b1"].GetArray()){
+                                      myData->setDoubleArrB1(k, v.GetDouble());
+                                      k+=1;
+                                    }
+                                    // Now set B2
+                                    k = 0;
+                                    for (auto& v : program[i]["b2"].GetArray()){
+                                      myData->setDoubleArrB2(k, v.GetDouble());
+                                      k+=1;
+                                    }
+                                    // Setting Program Handles
+                                    myData->setFilePtr(program[i]["file"].GetString());
+                                    myData->setMethod(program[i]["method"].GetString());
+                                    // //Setting Program components
+                                    if (!program[i]["javadoc"].IsNull())
+                                      myData->setJavaDoc(program[i]["javadoc"].GetString());
+
+                                    // std::cout << program[i]["returnType"].GetString() << std::endl;
+                                    if (program[i].HasMember("returnType"))
+                                        myData->setReturnType(program[i]["returnType"].GetString());
+
+                                    if (program[i].HasMember("body"))
+                                        myData->setBody(program[i]["body"].GetString());
+
+                                    if (program[i].HasMember("formalParam")){
+                                          const rapidjson::Value& a = program[i]["formalParam"].GetArray();
+                                          for(int k = 0; k < a.Size(); k++){
+                                            myData->setFormalParams(a[k].GetString());
+                                          }
+                                    }
+
+
+                                    storeMe->push_back(myData);
+                                    i++;
+                                    //std::cout << i << endl;
+                                    //fflush(stdout);
                           }
-                          // Setting Program Handles
-                          myData->setFilePtr(program[i]["file"].GetString());
-                          myData->setMethod(program[i]["method"].GetString());
-                          // //Setting Program components
-                          if (!program[i]["javadoc"].IsNull())
-                            myData->setJavaDoc(program[i]["javadoc"].GetString());
 
-                          // std::cout << program[i]["returnType"].GetString() << std::endl;
-                          if (program[i].HasMember("returnType"))
-                              myData->setReturnType(program[i]["returnType"].GetString());
+                  } // end while (1)
 
-                          if (program[i].HasMember("body"))
-                              myData->setBody(program[i]["body"].GetString());
+                  end = true;
 
-                          if (program[i].HasMember("formalParam")){
-                                const rapidjson::Value& a = program[i]["formalParam"].GetArray();
-                                for(int i = 0; i < a.Size(); i++){
-                                  myData->setFormalParams(a[i].GetString());
-                                }
-                            }
+                  // send the rest of data at the end, it can happen that the exception
+                  // never happens.
+                  pdbClient.sendData<SearchProgramData>(
+                          std::pair<std::string, std::string>("code_search_input_set",
+                                                              "code_search_db12"), storeMe);
 
+                  numData += storeMe->size();
+                  COUT << "Added " << storeMe->size() << " Total: " << numData
+                       << std::endl;
 
-                          storeMe->push_back(myData);
-                          i++;
-                    }
-                }
-                else
-                {
-                  rollback = false;
-                  pdb::Handle<SearchProgramData> myData =
-                      pdb::makeObject<SearchProgramData>(dim);
-                  //std::stringstream lineStream(line);
-                  myData->setDoubleA1(program[i]["a1"].GetDouble());
-                  myData->setDoubleA2(program[i]["a2"].GetDouble());
-                  myData->setProbY(program[i]["ProbY"].GetDouble());
-                  // Now set B1
-                  k = 0;
-                  for (auto& v : program[i]["b1"].GetArray()){
-                    myData->setDoubleArrB1(k, v.GetDouble());
-                    k+=1;
-                  }
-                  // Now set B2
-                  k = 0;
-                  for (auto& v : program[i]["b2"].GetArray()){
-                    myData->setDoubleArrB2(k, v.GetDouble());
-                    k+=1;
-                  }
-                  // Setting Program Handles
-                  myData->setFilePtr(program[i]["file"].GetString());
-                  myData->setMethod(program[i]["method"].GetString());
-                  // //Setting Program components
-                  if (!program[i]["javadoc"].IsNull())
-                    myData->setJavaDoc(program[i]["javadoc"].GetString());
+                  fflush(stdout);
+                  pdbClient.flushData();
+              } catch (pdb::NotEnoughSpace &n) {
+                  pdbClient.sendData<SearchProgramData>(
+                          std::pair<std::string, std::string>("code_search_input_set",
+                                                          "code_search_db12"), storeMe);
 
-                  // std::cout << program[i]["returnType"].GetString() << std::endl;
-                  if (program[i].HasMember("returnType"))
-                      myData->setReturnType(program[i]["returnType"].GetString());
-
-                  if (program[i].HasMember("body"))
-                      myData->setBody(program[i]["body"].GetString());
-
-                  if (program[i].HasMember("formalParam")){
-                        const rapidjson::Value& a = program[i]["formalParam"].GetArray();
-                        for(int i = 0; i < a.Size(); i++){
-                          myData->setFormalParams(a[i].GetString());
-                        }
-                    }
-
-
-
-                  storeMe->push_back(myData);
-                  i++;
-                }
+                  numData += storeMe->size();
+                  COUT << "Added " << storeMe->size() << " Total: " << numData
+                       << std::endl;
+                  fflush(stdout);
+                  rollback = true;
               }
 
-          end = true;
-
-          // send the rest of data at the end, it can happen that the exception
-          // never
-          // happens.
-          pdbClient.sendData<SearchProgramData>(
-                  std::pair<std::string, std::string>("code_search_input_set",
-                                                      "code_search_db40"), storeMe);
-
-          numData += storeMe->size();
-          COUT << "Added " << storeMe->size() << " Total: " << numData
-               << std::endl;
-
-          pdbClient.flushData();
-        } catch (pdb::NotEnoughSpace &n) {
-          pdbClient.sendData<SearchProgramData>(
-                  std::pair<std::string, std::string>("code_search_input_set",
-                                                      "code_search_db40"), storeMe);
-
-          numData += storeMe->size();
-          COUT << "Added " << storeMe->size() << " Total: " << numData
-               << std::endl;
-
-          rollback = true;
-        }
-        PDB_COUT << blocksize << "MB data sent to dispatcher server~~"
-                 << std::endl;
+              PDB_COUT << blocksize << "MB data sent to dispatcher server~~"
+                       << std::endl;
 
       } // while not end
       fclose(fp);
@@ -373,8 +340,8 @@ int main(int argc, char *argv[]) {
 
   } // End if - whetherToAddData = true
 
-
-  //pdbClient.removeSet("code_search_db40", "result");
+  pdb::makeObjectAllocatorBlock(blocksize * 1024 * 1024, true);
+  //pdbClient.removeSet("code_search_db12", "result");
 
   auto end = std::chrono::high_resolution_clock::now();
 
@@ -389,7 +356,7 @@ int main(int argc, char *argv[]) {
    // this is the object allocation block where all of this stuff will reside
    // pdb::makeObjectAllocatorBlock(blocksize * 1024 * 1024, true);
 
-   pdbClient.createSet<TopKQueue<double, SearchProgramData>>("code_search_db40", "result");
+   pdbClient.createSet<TopKQueue<double, SearchProgramData>>("code_search_db12", "result");
    Handle<SearchProgramData> myQuery = makeObject<SearchProgramData>(dim);
 
    myQuery->setDoubleA1(0.01);
@@ -398,11 +365,11 @@ int main(int argc, char *argv[]) {
    }
 
    Handle<Computation> myScanSet =
-    makeObject<ScanUserSet<SearchProgramData>>("code_search_db40", "code_search_input_set");
+    makeObject<ScanUserSet<SearchProgramData>>("code_search_db12", "code_search_input_set");
    Handle<Computation> myTopK = makeObject<TopProgram>(Tk, myQuery);
    myTopK->setInput(myScanSet);
 
-   Handle<Computation> myWriter = makeObject<ProgramResultWriter>("code_search_db40", "result");
+   Handle<Computation> myWriter = makeObject<ProgramResultWriter>("code_search_db12", "result");
    myWriter->setInput(myTopK);
 
    std::cout << "Ready to start computations" << std::endl;
@@ -421,7 +388,7 @@ int main(int argc, char *argv[]) {
 
    // now iterate through the result
    SetIterator<TopKQueue<double, Handle<SearchProgramData>>> result =
-           pdbClient.getSetIterator<TopKQueue<double, Handle<SearchProgramData>>>("code_search_db40", "result");
+           pdbClient.getSetIterator<TopKQueue<double, Handle<SearchProgramData>>>("code_search_db12", "result");
    //std::map<int, int> resultMap;
 
    for (auto& a : result) {
