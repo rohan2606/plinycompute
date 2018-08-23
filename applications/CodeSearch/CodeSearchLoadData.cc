@@ -18,7 +18,7 @@
 #ifndef CODE_SEARCH_LOAD_DATA
 #define CODE_SEARCH_LOAD_DATA
 
-// By Rohan, September 2017
+// By Rohan, August 2018
 // CodeSearch
 
 #include "Lambda.h"
@@ -50,6 +50,7 @@
 #include <cstring>
 
 #include "rapidjson/filereadstream.h"
+#include "rapidjson/istreamwrapper.h"
 #include "rapidjson/writer.h"
 #include "rapidjson/document.h"
 #include <vector>
@@ -82,8 +83,8 @@ int main(int argc, char *argv[]) {
 
 
   COUT << magenta << std::endl;
-  COUT << "Usage: blocksSize[MB] #managerIp #addData[Y/N]" "#nDimensions" "#topKResults" "#pathToInputFile(addData == Y)"
-          "./bin/CodeSearchLoadData 8 localhost Y 64 1 /home/ubuntu/Program_output_json.json"  << std::endl;
+  COUT << "Usage: ./bin/CodeSearchLoadData blocksSize[MB] #managerIp #addData[Y/N]" "#nDimensions" "#topKResults" "#pathToQuery" "pathToOutput" "#pathToInputFile(addData == Y)"
+          "./bin/CodeSearchLoadData 8 localhost Y 64 3 /home/ubuntu/QueryProgWEncoding.json /home/ubuntu/TopPrograms.txt /home/ubuntu/DatabaseOfCodes.json"  << std::endl;
   COUT << reset << std::endl;
 
 
@@ -116,9 +117,19 @@ int main(int argc, char *argv[]) {
     Tk = std::stoi(argv[5]);
   }
 
-  std::string fileName = "/home/ubuntu/Program_output_json.json";
+  std::string queryFileName = "/home/ubuntu/QueryProgWEncoding.json";
   if (argc > 6) {
-    fileName = argv[6];
+    queryFileName = argv[6];
+  }
+
+  std::string outputFileName = "/home/ubuntu/TopPrograms.json";
+  if (argc > 7) {
+    outputFileName = argv[7];
+  }
+
+  std::string fileName = "/home/ubuntu/DatabaseOfCodes.json.json";
+  if (argc > 8) {
+    fileName = argv[8];
   }
 
   COUT << blue << std::endl;
@@ -135,7 +146,9 @@ int main(int argc, char *argv[]) {
   COUT << "The Dimension of each data point: " << dim << std::endl;
   COUT << "The number of TopK points: " << Tk << std::endl;
   COUT << "Latent Space Dimensions: " << dim << std::endl;
+  COUT << "Query File: " << queryFileName << std::endl;
   COUT << "Input file: " << fileName << std::endl;
+  COUT << "Output file: " << outputFileName << std::endl;
   COUT << "*****************************************" << std::endl;
   COUT << reset << std::endl;
 
@@ -150,11 +163,6 @@ int main(int argc, char *argv[]) {
   pdbClient.registerType("libraries/libProgramResultWriter.so");
   string errMsg;
 
-  // For the random number generator
-  //    srand(time(0));
-  std::random_device rd;
-  std::mt19937 randomGen(rd());
-
   //***********************************************************************************
   //************************************READ INPUT DATA********************************
   //**********************************************************************************
@@ -163,11 +171,11 @@ int main(int argc, char *argv[]) {
   // Step 1. Create Database and Set
   // now, register a type for user data
 
-  auto begin = std::chrono::high_resolution_clock::now();
 
 
-  int numData;
   if (whetherToAddData == true) {
+    int numData;
+    auto tbegin = std::chrono::high_resolution_clock::now();
       // now, create a new database
       // and, create a new set in that database
       pdbClient.createDatabase("code_search_db0");
@@ -277,31 +285,78 @@ int main(int argc, char *argv[]) {
 
       } // while not end
       fclose(fp);
-  } // End if - whetherToAddData = true
 
 
-  auto end = std::chrono::high_resolution_clock::now();
+    auto tend = std::chrono::high_resolution_clock::now();
 
-  COUT << "Time loading data: "
-       << std::chrono::duration_cast<std::chrono::duration<float>>(end - begin).count()
-       << " secs." << std::endl;
+    COUT << "Time loading data: "
+         << std::chrono::duration_cast<std::chrono::duration<float>>(tend - tbegin).count()
+         << " secs." << std::endl;
 
+   } // End if - whetherToAddData = true
 
    //***********************************************************************************
    //*********************************LOAD QUERY********************************
    //***********************************************************************************
    //***********************************************************************************
-   // TODO - Use the JAVA Eclipse DOM driver to get the Query as a JSON and parse it similar to before.
+   // Use the JAVA Eclipse DOM driver to get the Query as a JSON and parse it similar to before.
 
    // Step 2. Load the QUERY
    // Load the Query and Get Top-k
+   pdb::makeObjectAllocatorBlock(blocksize * 1024 * 1024, true);
+   pdb::Handle<SearchProgramData> myQuery = pdb::makeObject<SearchProgramData>(dim);
 
-   Handle<SearchProgramData> myQuery = makeObject<SearchProgramData>(dim);
-
+   /*
    myQuery->setDoubleA1(-0.01);
    for(int i=0;i < dim; i++){
      myQuery->setDoubleArrB1(i,0.01);
-   }
+   }*/
+
+	ifstream ifs(queryFileName.c_str());
+	rapidjson::IStreamWrapper isw(ifs);
+
+
+   rapidjson::Document queryDocument;
+   queryDocument.ParseStream<0>(isw);
+   COUT << "Query Document Parsed" << std::endl;
+   assert(queryDocument.IsObject());
+   rapidjson::Value& queryProgram = queryDocument["programs"];
+
+   assert(queryProgram.Size() == 1);
+   assert(queryProgram.IsArray());
+
+
+	// First Set A1, A2 and ProbY
+	myQuery->setDoubleA1(queryProgram[0]["a1"].GetDouble());
+	// Now set B1
+	int k = 0;
+	for (auto& v : queryProgram[0]["b1"].GetArray()){
+	  myQuery->setDoubleArrB1(k, v.GetDouble());
+	  k+=1;
+	}
+	/*
+	// Setting queryProgram Handles
+
+	myQuery->setFilePtr(queryProgram["file"].GetString());
+	myQuery->setMethod(queryProgram["method"].GetString());
+
+	// Setting queryProgram components
+	if (!queryProgram["javadoc"].IsNull())
+	  myQuery->setJavaDoc(queryProgram["javadoc"].GetString());
+
+	if (queryProgram[i].HasMember("returnType"))
+		myQuery->setReturnType(queryProgram["returnType"].GetString());
+
+	if (queryProgram[i].HasMember("body"))
+		myQuery->setBody(queryProgram["body"].GetString());
+
+	if (queryProgram[i].HasMember("formalParam")){
+		  const rapidjson::Value& a = queryProgram["formalParam"].GetArray();
+		  for(int k = 0; k < a.Size(); k++){
+			myQuery->setFormalParams(a[k].GetString());
+		  }
+	}*/
+   //Need to call the destructor for myQuery
 
 
    //***********************************************************************************
@@ -312,7 +367,7 @@ int main(int argc, char *argv[]) {
    // Step 3. Create the Computation Graph
    // Load the Query and Get Top-k
 
-   pdb::makeObjectAllocatorBlock(blocksize * 1024 * 1024, true);
+
    pdbClient.createSet<TopKQueue<double, SearchProgramData>>("code_search_db0", "result");
 
    Handle<Computation> myScanSet =
@@ -324,19 +379,21 @@ int main(int argc, char *argv[]) {
    myWriter->setInput(myTopK);
 
    std::cout << "Ready to start computations" << std::endl;
-   begin = std::chrono::high_resolution_clock::now();
+   tbegin = std::chrono::high_resolution_clock::now();
    pdbClient.executeComputations(myWriter);
-   end = std::chrono::high_resolution_clock::now();
+   tend = std::chrono::high_resolution_clock::now();
 
    std::cout << "The query is executed successfully!" << std::endl;
    float timeDifference =
-       (float(std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count())) / (float)1000000000;
+       (float(std::chrono::duration_cast<std::chrono::nanoseconds>(tend - tbegin).count())) / (float)1000000000;
    std::cout << "#TimeDuration: " << timeDifference << " Second " << std::endl;
 
    // now iterate through the result
    SetIterator<TopKQueue<double, Handle<SearchProgramData>>> result =
            pdbClient.getSetIterator<TopKQueue<double, Handle<SearchProgramData>>>("code_search_db0", "result");
 
+
+   FILE* fout = fopen(outputFileName.c_str(), "w");
    for (auto& a : result) {
        std::cout << "Got back " << a->size() << " items from the top-k query.\n";
        std::cout << "These items are:\n";
@@ -345,10 +402,11 @@ int main(int argc, char *argv[]) {
            std::cout << "score: " << (*a)[i].getScore() << "\n";
            std::cout << "data: ";
            (*a)[i].getValue()->print();
+           (*a)[i].getValue()->fprint(fout);
            std::cout << "\n\n";
        }
    }
-   //pdbClient.removeSet("code_search_db0", "result");
+   pdbClient.removeSet("code_search_db0", "result");
 
 }
 

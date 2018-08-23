@@ -61,6 +61,7 @@ public:
     b2 = makeObject<Vector<double>>(dim, dim);
   }
 
+
   size_t getSize() {
     return this->dim;
   }
@@ -235,10 +236,19 @@ public:
     std::cout << this->returnType << " "<< this->method << "( " << this->getFormalParams() << ") {" << std::endl;
     std::cout << this->body << std::endl;
     std::cout << "}" << std::endl;
-
-
     return;
   }
+
+  void fprint(FILE* fout){
+    fprintf(fout, "%s\n", this->filePtr.c_str());
+    fprintf(fout, "%s\n", this->javadoc.c_str());
+    fprintf(fout, "%s %s (%s) {\n", this->returnType.c_str(), this->method.c_str(), this->getFormalParams().c_str());
+    fprintf(fout, "%s\n", this->body.c_str());
+    fprintf(fout, "}\n\n");
+    return;
+  }
+
+
 
   ~SearchProgramData() {}
 
