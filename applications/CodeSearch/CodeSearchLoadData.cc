@@ -178,8 +178,8 @@ int main(int argc, char *argv[]) {
     auto tbegin = std::chrono::high_resolution_clock::now();
       // now, create a new database
       // and, create a new set in that database
-      pdbClient.createDatabase("code_search_db0");
-      pdbClient.createSet<SearchProgramData>("code_search_db0", "code_search_input_set");
+      pdbClient.createDatabase("code_search_db2");
+      pdbClient.createSet<SearchProgramData>("code_search_db2", "code_search_input_set");
 
       // read a JSON file
       // document holds a json document retrieved from a Tensorflow Test Code with Programs + latent vactors
@@ -236,10 +236,6 @@ int main(int argc, char *argv[]) {
                                     myData->setFilePtr(program[i]["file"].GetString());
                                     myData->setMethod(program[i]["method"].GetString());
 
-                                    // Setting Program components
-                                    if (!program[i]["javadoc"].IsNull())
-                                      myData->setJavaDoc(program[i]["javadoc"].GetString());
-
                                     if (program[i].HasMember("returnType"))
                                         myData->setReturnType(program[i]["returnType"].GetString());
 
@@ -263,7 +259,7 @@ int main(int argc, char *argv[]) {
                   // never happens.
                   pdbClient.sendData<SearchProgramData>(
                           std::pair<std::string, std::string>("code_search_input_set",
-                                                              "code_search_db0"), storeMe);
+                                                              "code_search_db2"), storeMe);
 
                   numData += storeMe->size();
                   COUT << "Added " << storeMe->size() << " Total: " << numData
@@ -273,7 +269,7 @@ int main(int argc, char *argv[]) {
               } catch (pdb::NotEnoughSpace &n) {
                   pdbClient.sendData<SearchProgramData>(
                           std::pair<std::string, std::string>("code_search_input_set",
-                                                          "code_search_db0"), storeMe);
+                                                          "code_search_db2"), storeMe);
 
                   numData += storeMe->size();
                   COUT << "Added " << storeMe->size() << " Total: " << numData
@@ -304,16 +300,11 @@ int main(int argc, char *argv[]) {
    // Step 2. Load the QUERY
    // Load the Query and Get Top-k
    pdb::makeObjectAllocatorBlock(blocksize * 1024 * 1024, true);
+
+
    pdb::Handle<SearchProgramData> myQuery = pdb::makeObject<SearchProgramData>(dim);
-
-   /*
-   myQuery->setDoubleA1(-0.01);
-   for(int i=0;i < dim; i++){
-     myQuery->setDoubleArrB1(i,0.01);
-   }*/
-
-	ifstream ifs(queryFileName.c_str());
-	rapidjson::IStreamWrapper isw(ifs);
+	 ifstream ifs(queryFileName.c_str());
+	 rapidjson::IStreamWrapper isw(ifs);
 
 
    rapidjson::Document queryDocument;
@@ -334,28 +325,7 @@ int main(int argc, char *argv[]) {
 	  myQuery->setDoubleArrB1(k, v.GetDouble());
 	  k+=1;
 	}
-	/*
-	// Setting queryProgram Handles
 
-	myQuery->setFilePtr(queryProgram["file"].GetString());
-	myQuery->setMethod(queryProgram["method"].GetString());
-
-	// Setting queryProgram components
-	if (!queryProgram["javadoc"].IsNull())
-	  myQuery->setJavaDoc(queryProgram["javadoc"].GetString());
-
-	if (queryProgram[i].HasMember("returnType"))
-		myQuery->setReturnType(queryProgram["returnType"].GetString());
-
-	if (queryProgram[i].HasMember("body"))
-		myQuery->setBody(queryProgram["body"].GetString());
-
-	if (queryProgram[i].HasMember("formalParam")){
-		  const rapidjson::Value& a = queryProgram["formalParam"].GetArray();
-		  for(int k = 0; k < a.Size(); k++){
-			myQuery->setFormalParams(a[k].GetString());
-		  }
-	}*/
    //Need to call the destructor for myQuery
 
 
@@ -368,45 +338,47 @@ int main(int argc, char *argv[]) {
    // Load the Query and Get Top-k
 
 
-   pdbClient.createSet<TopKQueue<double, SearchProgramData>>("code_search_db0", "result");
+
+   pdbClient.createSet<TopKQueue<double, SearchProgramData>>("code_search_db2", "result0");
 
    Handle<Computation> myScanSet =
-        makeObject<ScanUserSet<SearchProgramData>>("code_search_db0", "code_search_input_set");
+        makeObject<ScanUserSet<SearchProgramData>>("code_search_db2", "code_search_input_set");
    Handle<Computation> myTopK = makeObject<TopProgram>(Tk, myQuery);
    myTopK->setInput(myScanSet);
 
-   Handle<Computation> myWriter = makeObject<ProgramResultWriter>("code_search_db0", "result");
+   Handle<Computation> myWriter = makeObject<ProgramResultWriter>("code_search_db2", "result0");
    myWriter->setInput(myTopK);
 
    std::cout << "Ready to start computations" << std::endl;
-   tbegin = std::chrono::high_resolution_clock::now();
+   auto tbegin = std::chrono::high_resolution_clock::now();
    pdbClient.executeComputations(myWriter);
-   tend = std::chrono::high_resolution_clock::now();
+   auto tend = std::chrono::high_resolution_clock::now();
 
    std::cout << "The query is executed successfully!" << std::endl;
    float timeDifference =
        (float(std::chrono::duration_cast<std::chrono::nanoseconds>(tend - tbegin).count())) / (float)1000000000;
    std::cout << "#TimeDuration: " << timeDifference << " Second " << std::endl;
 
-   // now iterate through the result
-   SetIterator<TopKQueue<double, Handle<SearchProgramData>>> result =
-           pdbClient.getSetIterator<TopKQueue<double, Handle<SearchProgramData>>>("code_search_db0", "result");
+   // now iterate through the result0
+   SetIterator<TopKQueue<double, Handle<SearchProgramData>>> result0 =
+           pdbClient.getSetIterator<TopKQueue<double, Handle<SearchProgramData>>>("code_search_db2", "result0");
 
 
    FILE* fout = fopen(outputFileName.c_str(), "w");
-   for (auto& a : result) {
+   for (auto& a : result0) {
        std::cout << "Got back " << a->size() << " items from the top-k query.\n";
-       std::cout << "These items are:\n";
-
-       for (int i = 0; i < a->size(); i++) {
-           std::cout << "score: " << (*a)[i].getScore() << "\n";
-           std::cout << "data: ";
-           (*a)[i].getValue()->print();
-           (*a)[i].getValue()->fprint(fout);
-           std::cout << "\n\n";
+	   std::vector<SearchProgramData> TopProgs;
+	   for (int i = 0; i < a->size(); i++) {
+		   TopProgs.push_back( *((*a)[i].getValue()) );
+		   TopProgs.at(i).setPostProb((*a)[i].getScore());
+	   }
+	   std::sort(TopProgs.begin(), TopProgs.end());
+	   std::reverse(TopProgs.begin(), TopProgs.end());
+       for (auto& prog : TopProgs) {
+           prog.fprint(fout);
        }
    }
-   pdbClient.removeSet("code_search_db0", "result");
+   pdbClient.removeSet("code_search_db2", "result0");
 
 }
 

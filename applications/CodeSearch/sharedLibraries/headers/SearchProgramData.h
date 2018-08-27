@@ -48,8 +48,8 @@ private:
   String returnType = "";
   String body = "";
 
-
-
+  double PostProb = -100000.0;
+  
 public:
   ENABLE_DEEP_COPY
 
@@ -128,6 +128,10 @@ public:
       return;
   }
 
+  void setPostProb(double val){
+	this->PostProb = val;  
+  }
+  
   void setBody(String inpBody){
     this->body = inpBody;
     return;
@@ -174,7 +178,7 @@ public:
   String getFormalParams(){
       std::string temp = "";
       for(int i=0;  i < (*FormalParams).size(); i++)
-        temp = temp + (*FormalParams)[i].c_str();
+        temp = temp + (*FormalParams)[i].c_str() + " ";
       return temp;
   }
 
@@ -184,9 +188,6 @@ public:
   // to get squared distance following SparkMLLib
 
   double getSquaredDistance(Handle<SearchProgramData> queryProg) {
-
-
-
       double a1_in = queryProg->getDoubleA1();
       Handle<Vector<double>> b1_in = queryProg->getB1();
 
@@ -230,25 +231,22 @@ public:
   }
 
   void print(){
-    std::cout << this->filePtr << std::endl;
-    std::cout << this->javadoc << std::endl;
-
-    std::cout << this->returnType << " "<< this->method << "( " << this->getFormalParams() << ") {" << std::endl;
     std::cout << this->body << std::endl;
-    std::cout << "}" << std::endl;
     return;
   }
 
   void fprint(FILE* fout){
-    fprintf(fout, "%s\n", this->filePtr.c_str());
-    fprintf(fout, "%s\n", this->javadoc.c_str());
-    fprintf(fout, "%s %s (%s) {\n", this->returnType.c_str(), this->method.c_str(), this->getFormalParams().c_str());
-    fprintf(fout, "%s\n", this->body.c_str());
-    fprintf(fout, "}\n\n");
+	  
+	fprintf(fout, "Prob :: %lf\n", this->PostProb);
+	fprintf(fout, "File :: %s \n", this->filePtr.c_str());
+	fprintf(fout, "Method :: %s \n ", this->method.c_str());
+    fprintf(fout, "%s\n\n", this->body.c_str());
     return;
   }
 
-
+  bool operator< (const SearchProgramData &other) const {
+    return this->PostProb < other.PostProb;
+  }
 
   ~SearchProgramData() {}
 
