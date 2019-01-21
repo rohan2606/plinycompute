@@ -15,7 +15,7 @@ endforeach()
 
 # create the target
 add_pdb_application(CodeSearchLoadData)
-
+add_pdb_application(CodeSearch)
 
 add_dependencies(TopProgram SearchProgramData)
 
@@ -24,8 +24,11 @@ add_dependencies(CodeSearchLoadData ProgramResultWriter)
 add_dependencies(CodeSearchLoadData SearchProgramData)
 add_dependencies(CodeSearchLoadData TopProgram)
 
+add_dependencies(CodeSearch ProgramResultWriter)
+add_dependencies(CodeSearch SearchProgramData)
+add_dependencies(CodeSearch TopProgram)
+add_dependencies(CodeSearch CodeSearchLoadData)
 
 # add a build dependency to build-tests target
 add_dependencies(build-ml-tests CodeSearchLoadData)
-add_dependencies(build-ml-tests TopProgram)
-add_dependencies(build-ml-tests ProgramResultWriter)
+add_dependencies(build-ml-tests CodeSearch)

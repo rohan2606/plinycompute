@@ -34,7 +34,7 @@ namespace pdb {
 class TopProgram : public TopKComp<SearchProgramData, double , Handle<SearchProgramData>> {
 
     Handle<SearchProgramData> query;
-    int k = 1;
+    int k = 3;
 
 public:
     ENABLE_DEEP_COPY

@@ -1,0 +1,4 @@
+No command '{time' found, did you mean:
+ Command 'utime' from package 'atfs' (universe)
+ Command 'time' from package 'time' (main)
+{time: command not found
