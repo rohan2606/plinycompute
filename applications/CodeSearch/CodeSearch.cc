@@ -262,7 +262,12 @@ int main(int argc, char *argv[]) {
                          // all values are elements of the array.
      writer.EndArray();
      writer.EndObject();
-   }
+     int i = 1;
+     for (auto& prog : TopProgs) {
+           prog.fprint(fout, i);
+           i += 1;
+     }
+  }
 
    std::ofstream of(outputFileName.c_str());
    of << s.GetString();

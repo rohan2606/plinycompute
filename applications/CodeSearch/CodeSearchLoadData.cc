@@ -201,19 +201,19 @@ int main(int argc, char *argv[]) {
                                     pdb::Handle<SearchProgramData> myData =
                                         pdb::makeObject<SearchProgramData>(dim);
                                     // First Set A1, A2 and ProbY
-                                    myData->setDoubleA1(program[i]["a1"].GetDouble());
-                                    myData->setDoubleA2(program[i]["a2"].GetDouble());
-                                    myData->setProbY(program[i]["ProbY"].GetDouble());
+                                    //myData->setDoubleA1(program[i]["a1"].GetDouble());
+                                    myData->setDoubleA2(program[i]["a2"].GetString());
+                                    myData->setProbY(program[i]["ProbY"].GetString());
                                     // Now set B1
                                     int k = 0;
-                                    for (auto& v : program[i]["b1"].GetArray()){
-                                      myData->setDoubleArrB1(k, v.GetDouble());
-                                      k+=1;
-                                    }
+                                    //for (auto& v : program[i]["b1"].GetArray()){
+                                    //  myData->setDoubleArrB1(k, v.GetDouble());
+                                    //  k+=1;
+                                    //}
                                     // Now set B2
                                     k = 0;
                                     for (auto& v : program[i]["b2"].GetArray()){
-                                      myData->setDoubleArrB2(k, v.GetDouble());
+                                      myData->setDoubleArrB2(k, v.GetString());
                                       k+=1;
                                     }
                                     // Setting Program Handles

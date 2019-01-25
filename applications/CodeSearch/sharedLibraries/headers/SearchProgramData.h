@@ -66,7 +66,8 @@ public:
     return this->dim;
   }
 
-  void setDoubleArrB1(int i,double value){
+  void setDoubleArrB1(int i, String inpValue){
+    double value = atof(inpValue.c_str());
     if (i < this->dim) {
         (*b1)[i] = value;
     } else {
@@ -77,7 +78,8 @@ public:
     return;
   }
 
-  void setDoubleArrB2(int i,double value){
+  void setDoubleArrB2(int i, String inpValue){
+    double value = atof(inpValue.c_str());
     if (i < this->dim) {
         (*b2)[i] = value;
     } else {
@@ -88,17 +90,22 @@ public:
     return;
   }
 
-  void setDoubleA1(double value){
+  void setDoubleA1(String inpValue){
+     double value = atof(inpValue.c_str());
      this->a1 = value;
      return;
   }
 
-  void setDoubleA2(double value){
+  void setDoubleA2(String inpValue){
+     double value = atof(inpValue.c_str());
+     this->a1 = value;
      this->a2 = value;
      return;
   }
 
-  void setProbY(double value){
+  void setProbY(String inpValue){
+     double value = atof(inpValue.c_str());
+     this->a1 = value;
      this->ProbY = value;
      return;
   }
@@ -235,9 +242,9 @@ public:
     return;
   }
 
-  void fprint(FILE* fout){
-
+  void fprint(FILE* fout, int rank){
 	fprintf(fout, "Prob :: %lf\n", this->PostProb);
+        fprintf(fout, "Rank :: %d\n", rank);
 	fprintf(fout, "File :: %s \n", this->filePtr.c_str());
 	fprintf(fout, "Method :: %s \n ", this->method.c_str());
   fprintf(fout, "%s\n\n", this->body.c_str());
