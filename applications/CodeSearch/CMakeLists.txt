@@ -16,6 +16,7 @@ endforeach()
 # create the target
 add_pdb_application(CodeSearchLoadData)
 add_pdb_application(CodeSearch)
+add_pdb_application(CountDB)
 
 add_dependencies(TopProgram SearchProgramData)
 

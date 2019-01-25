@@ -49,7 +49,7 @@ private:
   String body = "";
 
   double PostProb = -100000.0;
-  
+
 public:
   ENABLE_DEEP_COPY
 
@@ -129,9 +129,9 @@ public:
   }
 
   void setPostProb(double val){
-	this->PostProb = val;  
+	this->PostProb = val;
   }
-  
+
   void setBody(String inpBody){
     this->body = inpBody;
     return;
@@ -236,12 +236,12 @@ public:
   }
 
   void fprint(FILE* fout){
-	  
+
 	fprintf(fout, "Prob :: %lf\n", this->PostProb);
 	fprintf(fout, "File :: %s \n", this->filePtr.c_str());
 	fprintf(fout, "Method :: %s \n ", this->method.c_str());
-    fprintf(fout, "%s\n\n", this->body.c_str());
-    return;
+  fprintf(fout, "%s\n\n", this->body.c_str());
+  return;
   }
 
   bool operator< (const SearchProgramData &other) const {

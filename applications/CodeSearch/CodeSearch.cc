@@ -48,13 +48,14 @@
 #include <time.h>
 #include <unistd.h>
 #include <cstring>
+#include <vector>
 
 #include <string>
 #include <streambuf>
 #include "rapidjson/istreamwrapper.h"
 #include "rapidjson/writer.h"
 #include "rapidjson/document.h"
-#include <vector>
+#include "rapidjson/stringbuffer.h"
 
 
 // for convenience
@@ -156,7 +157,7 @@ int main(int argc, char *argv[]) {
    //***********************************************************************************
    //***********************************************************************************
    // Use the JAVA Eclipse DOM driver to get the Query as a JSON and parse it similar to before.
-   
+
    string errMsg;
    // Step 2. Load the QUERY
    // Load the Query and Get Top-k
@@ -225,7 +226,7 @@ int main(int argc, char *argv[]) {
            pdbClient.getSetIterator<TopKQueue<double, Handle<SearchProgramData>>>("code_search_db", "result0");
 
 
-   FILE* fout = fopen(outputFileName.c_str(), "w");
+   // FILE* fout = fopen(outputFileName.c_str(), "w");
    for (auto& a : result0) {
        std::cout << "Got back " << a->size() << " items from the top-k query.\n";
 	   std::vector<SearchProgramData> TopProgs;
@@ -235,10 +236,39 @@ int main(int argc, char *argv[]) {
 	   }
 	   std::sort(TopProgs.begin(), TopProgs.end());
 	   std::reverse(TopProgs.begin(), TopProgs.end());
-       for (auto& prog : TopProgs) {
-           prog.fprint(fout);
-       }
+     // for (auto& prog : TopProgs) {
+     //     prog.fprint(fout);
+     // }
+     rapidjson::StringBuffer s;
+     rapidjson::Writer<rapidjson::StringBuffer> writer(s);
+
+     writer.StartObject();
+     writer.Key("TopPrograms");
+     writer.StartArray();                // Between StartArray()/EndArray(),
+     int count = 0;
+     for (auto& prog : TopProgs){
+        count += 1;
+        writer.Key("Rank");
+        writer.Int(count);
+        writer.Key("Prob");
+        writer.Double(prog->PostProb);
+        writer.Key("File");
+        writer.Double(prog->filePtr.c_str());
+        writer.Key("Method");
+        writer.Double(prog->method.c_str());
+        writer.Key("Body");
+        writer.Double(prog->body.c_str());
+     }
+                         // all values are elements of the array.
+     writer.EndArray();
+     writer.EndObject();
    }
+
+   std::ofstream of(outputFileName.c_str());
+   of << s.GetString();
+   if (!of.good())
+        throw std::runtime_error("Can't write the JSON string to the file!");
+
    pdbClient.removeSet("code_search_db", "result0");
 
 }
